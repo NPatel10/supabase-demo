@@ -3,3 +3,9 @@ project_id = "your-project-ref"
 [db.seed]
 enabled = true
 sql_paths = ["./seed.sql"]
+
+[functions.hello-world]
+verify_jwt = false
+
+[functions.signed-url]
+verify_jwt = true
