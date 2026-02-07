@@ -1,12 +1,17 @@
-import { FlaskConical, Lock, Radio, Sparkles, Table2 } from "lucide-react"
+﻿import { FlaskConical, Lock, Radio, Sparkles, Table2 } from "lucide-react"
 import { NavLink, Navigate, Route, Routes, useLocation } from "react-router-dom"
 
 import { Badge } from "@/components/ui/badge"
 import ApiExplorer from "@/screens/BookStore"
 import AuthDemo from "@/screens/AuthDemo"
+import AuthDataModelPage from "@/screens/auth/AuthDataModelPage"
+import AuthProfilePage from "@/screens/auth/AuthProfilePage"
+import AuthSessionPage from "@/screens/auth/AuthSessionPage"
+import AuthSignInPage from "@/screens/auth/AuthSignInPage"
+import AuthSignUpPage from "@/screens/auth/AuthSignUpPage"
 import EdgeFnDemo from "@/screens/EdgeFnDemo"
 import RealtimeDemo from "@/screens/RealtimeDemo"
-import StorageDemo from "@/screens/StorageDemo"
+import StorageDemo from "@/screens/storage/StorageDemo"
 
 const navItems = [
   {
@@ -59,7 +64,11 @@ const navItems = [
 function App() {
   const location = useLocation()
   const activeItem =
-    navItems.find((item) => item.path === location.pathname) ?? navItems[0]
+    navItems.find((item) =>
+      item.path === "/"
+        ? location.pathname === "/"
+        : location.pathname.startsWith(item.path)
+    ) ?? navItems[0]
 
   return (
     <div className="relative min-h-dvh overflow-hidden bg-[#f7f4ee] text-foreground">
@@ -114,6 +123,11 @@ function App() {
           <Routes>
             <Route path="/" element={<ApiExplorer />} />
             <Route path="/auth" element={<AuthDemo />} />
+            <Route path="/auth/sign-up" element={<AuthSignUpPage />} />
+            <Route path="/auth/sign-in" element={<AuthSignInPage />} />
+            <Route path="/auth/profile" element={<AuthProfilePage />} />
+            <Route path="/auth/session" element={<AuthSessionPage />} />
+            <Route path="/auth/data-model" element={<AuthDataModelPage />} />
             <Route path="/realtime" element={<RealtimeDemo />} />
             <Route path="/storage" element={<StorageDemo />} />
             <Route path="/edge" element={<EdgeFnDemo />} />
