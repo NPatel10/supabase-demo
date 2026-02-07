@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useState } from "react"
+import { useState } from "react"
 import type { FormEvent } from "react"
 import { BookOpen, Database, RefreshCcw, ShieldCheck } from "lucide-react"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
@@ -36,6 +37,14 @@ type DraftBook = {
   publishedYear: string
 }
 
+type SavePayload = {
+  id?: Book["id"]
+  title: string
+  author: string
+  genre: string | null
+  publishedYear: number | null
+}
+
 const emptyDraft: DraftBook = {
   title: "",
   author: "",
@@ -69,15 +78,13 @@ function CodeBlock({ title, code }: { title: string; code: string }) {
 }
 
 export default function ApiExplorer() {
-  const [books, setBooks] = useState<Book[]>([])
   const [draft, setDraft] = useState<DraftBook>(emptyDraft)
   const [selected, setSelected] = useState<Book | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-  const [isSaving, setIsSaving] = useState(false)
-  const [isDeleting, setIsDeleting] = useState<Book["id"] | null>(null)
+  const [formError, setFormError] = useState<string | null>(null)
+  const [deletingId, setDeletingId] = useState<Book["id"] | null>(null)
 
   const isConfigured = supabaseConfig.isConfigured
+  const queryClient = useQueryClient()
 
   const restEndpoint = supabaseConfig.supabaseUrl
     ? `${supabaseConfig.supabaseUrl}/rest/v1/book_store`
@@ -89,27 +96,58 @@ export default function ApiExplorer() {
     "Content-Type: application/json",
   ]
 
-  const loadBooks = useCallback(async () => {
-    if (!isConfigured) {
-      setIsLoading(false)
-      return
-    }
+  const booksQuery = useQuery({
+    queryKey: ["books"],
+    queryFn: listBooks,
+    enabled: isConfigured,
+    staleTime: 1000 * 30,
+  })
 
-    try {
-      setIsLoading(true)
-      setError(null)
-      const data = await listBooks()
-      setBooks(data)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load books.")
-    } finally {
-      setIsLoading(false)
-    }
-  }, [isConfigured])
+  const saveMutation = useMutation({
+    mutationFn: async (payload: SavePayload) => {
+      if (payload.id) {
+        return updateBook(payload.id, {
+          title: payload.title,
+          author: payload.author,
+          genre: payload.genre,
+          published_year: payload.publishedYear,
+        })
+      }
 
-  useEffect(() => {
-    void loadBooks()
-  }, [loadBooks])
+      return createBook({
+        title: payload.title,
+        author: payload.author,
+        genre: payload.genre,
+        published_year: payload.publishedYear,
+      })
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["books"] })
+    },
+  })
+
+  const deleteMutation = useMutation({
+    mutationFn: async (book: Book) => deleteBook(book.id),
+    onMutate: (book) => {
+      setDeletingId(book.id)
+    },
+    onSettled: () => {
+      setDeletingId(null)
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["books"] })
+    },
+  })
+
+  const books = booksQuery.data ?? []
+  const isLoading = booksQuery.isLoading
+  const isRefreshing = booksQuery.isFetching
+  const isSaving = saveMutation.isPending
+  const errorMessage =
+    formError ??
+    (saveMutation.error instanceof Error ? saveMutation.error.message : null) ??
+    (deleteMutation.error instanceof Error ? deleteMutation.error.message : null) ??
+    (booksQuery.error instanceof Error ? booksQuery.error.message : null)
 
   const handleDraftChange = (key: keyof DraftBook, value: string) => {
     setDraft((prev) => ({ ...prev, [key]: value }))
@@ -118,10 +156,12 @@ export default function ApiExplorer() {
   const resetDraft = () => {
     setDraft(emptyDraft)
     setSelected(null)
+    setFormError(null)
   }
 
   const handleEdit = (book: Book) => {
     setSelected(book)
+    setFormError(null)
     setDraft({
       title: book.title,
       author: book.author,
@@ -133,53 +173,43 @@ export default function ApiExplorer() {
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     if (!isConfigured) {
-      setError("Supabase is not configured yet.")
+      setFormError("Supabase is not configured yet.")
       return
     }
 
     if (!draft.title.trim() || !draft.author.trim()) {
-      setError("Title and author are required.")
+      setFormError("Title and author are required.")
       return
     }
 
     const cleanedYear = draft.publishedYear.trim()
     const parsedYear = cleanedYear ? Number(cleanedYear) : null
     if (cleanedYear && Number.isNaN(parsedYear)) {
-      setError("Published year must be a number.")
+      setFormError("Published year must be a number.")
       return
     }
 
-    setIsSaving(true)
+    setFormError(null)
     try {
-      setError(null)
-      if (selected) {
-        await updateBook(selected.id, {
-          title: draft.title.trim(),
-          author: draft.author.trim(),
-          genre: draft.genre.trim() || null,
-          published_year: parsedYear,
-        })
-      } else {
-        await createBook({
-          title: draft.title.trim(),
-          author: draft.author.trim(),
-          genre: draft.genre.trim() || null,
-          published_year: parsedYear,
-        })
+      const payload: SavePayload = {
+        id: selected?.id,
+        title: draft.title.trim(),
+        author: draft.author.trim(),
+        genre: draft.genre.trim() || null,
+        publishedYear: parsedYear,
       }
-
+      await saveMutation.mutateAsync(payload)
       resetDraft()
-      await loadBooks()
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save book.")
-    } finally {
-      setIsSaving(false)
+      if (!(err instanceof Error)) {
+        setFormError("Failed to save book.")
+      }
     }
   }
 
   const handleDelete = async (book: Book) => {
     if (!isConfigured) {
-      setError("Supabase is not configured yet.")
+      setFormError("Supabase is not configured yet.")
       return
     }
 
@@ -190,15 +220,13 @@ export default function ApiExplorer() {
       return
     }
 
-    setIsDeleting(book.id)
+    setFormError(null)
     try {
-      setError(null)
-      await deleteBook(book.id)
-      await loadBooks()
+      await deleteMutation.mutateAsync(book)
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to delete book.")
-    } finally {
-      setIsDeleting(null)
+      if (!(err instanceof Error)) {
+        setFormError("Failed to delete book.")
+      }
     }
   }
 
@@ -241,10 +269,10 @@ export default function ApiExplorer() {
               </Alert>
             )}
 
-            {error && (
+            {errorMessage && (
               <Alert variant="destructive">
                 <AlertTitle>Something went wrong</AlertTitle>
-                <AlertDescription>{error}</AlertDescription>
+                <AlertDescription>{errorMessage}</AlertDescription>
               </Alert>
             )}
 
@@ -325,8 +353,8 @@ export default function ApiExplorer() {
                 type="button"
                 size="sm"
                 variant="ghost"
-                onClick={() => void loadBooks()}
-                disabled={isLoading}
+                onClick={() => void booksQuery.refetch()}
+                disabled={!isConfigured || isRefreshing}
               >
                 <RefreshCcw className="size-4" />
                 Refresh
@@ -429,9 +457,9 @@ export default function ApiExplorer() {
                           size="sm"
                           variant="destructive"
                           onClick={() => void handleDelete(book)}
-                          disabled={isDeleting === book.id}
+                          disabled={deletingId === book.id}
                         >
-                          {isDeleting === book.id && <Spinner />}
+                          {deletingId === book.id && <Spinner />}
                           Delete
                         </Button>
                       </div>
