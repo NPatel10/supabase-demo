@@ -3,7 +3,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useAuth } from "@/screens/auth/useAuth"
 import { UserPlus } from "lucide-react"
-import { useState, type SubmitEventHandler } from "react"
+import { useEffect, useState, type SubmitEventHandler } from "react"
 import type { SignUpDraft } from "./utils"
 import { Button } from "@/components/ui/button"
 import { Spinner } from "@/components/ui/spinner"
@@ -24,6 +24,12 @@ export default function AuthSignUpPage() {
   const auth = useAuth()
   const navigate = useNavigate()
   const hasSession = Boolean(auth.session)
+
+  useEffect(() => {
+    if (!auth.isSessionLoading && auth.session) {
+      navigate("/auth/profile")
+    }
+  }, [auth.isSessionLoading, auth.session, navigate])
 
   const handleDraftChange = (key: keyof SignUpDraft, value: string) => {
     setDraft((prev) => ({ ...prev, [key]: value }))

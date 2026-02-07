@@ -2,7 +2,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 
 import { supabase } from "@/lib/supabaseClient"
-import type { Profile } from "@/types/profile"
 import type { ProfileDraft, SignInDraft, SignUpDraft } from "./utils"
 import type { UserAttributes } from "@supabase/supabase-js"
 
@@ -31,6 +30,7 @@ export function useAuth() {
     }
   }, [queryClient])
 
+  const isSessionLoading = sessionQuery.isPending
   const session = sessionQuery.data ?? null
   const user = session?.user ?? null
 
@@ -53,12 +53,13 @@ export function useAuth() {
         throw new Error(error.message)
       }
 
-      return (data ?? null) as Profile | null
+      return (data ?? null)
     },
     staleTime: 1000 * 30,
     refetchOnWindowFocus: false,
   })
 
+  const isProfileLoading = profileQuery.isPending
   const profile = profileQuery.data ?? null
 
   const signUpMutation = useMutation({
@@ -135,8 +136,10 @@ export function useAuth() {
   return {
     queryClient,
     session,
+    isSessionLoading,
     user,
     profile,
+    isProfileLoading,
     signUpMutation,
     signInMutation,
     signOutMutation,

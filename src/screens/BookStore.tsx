@@ -13,7 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { createBook, deleteBook, listBooks, updateBook } from "@/lib/bookStoreApi"
 import { emptyDraft, toDisplayDate, type Book, type DraftBook, type SavePayload } from "@/types/book"
 
-export default function ApiExplorer() {
+export default function BookStore() {
   const [draft, setDraft] = useState<DraftBook>(emptyDraft)
   const [selected, setSelected] = useState<Book | null>(null)
   const [formError, setFormError] = useState<string | null>(null)

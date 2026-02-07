@@ -6,23 +6,42 @@ import { Spinner } from "@/components/ui/spinner"
 import { Textarea } from "@/components/ui/textarea"
 import { useAuth } from "@/screens/auth/useAuth"
 import { formatDate, type ProfileDraft } from "./utils"
-import { useState, type SubmitEventHandler } from "react"
+import { useEffect, useState, type SubmitEventHandler } from "react"
 import { Empty, EmptyContent, EmptyHeader, EmptyTitle } from "@/components/ui/empty"
 import { Button } from "@/components/ui/button"
 import { useNavigate } from "react-router-dom"
 
+const emptyProfile: ProfileDraft = {
+  email: "",
+  displayName: "",
+  username: "",
+}
+
 export default function AuthProfilePage() {
   const auth = useAuth()
-  const isLoading = auth.signUpMutation.isPending
 
-  const [draft, setDraft] = useState<ProfileDraft>(() => ({
-    displayName: auth.profile?.display_name ?? "",
-    username: auth.profile?.username ?? "",
-    email: auth.user?.email ?? "",
-  }))
+  console.log(auth.profile)
+  const [draft, setDraft] = useState<ProfileDraft>(emptyProfile)
 
   const [error, setError] = useState<string | null>(null)
   const navigate = useNavigate()
+
+  useEffect(() => {
+    if (auth.profile && auth.user) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setDraft({
+        displayName: auth.profile?.display_name ?? "",
+        username: auth.profile?.username ?? "",
+        email: auth.user?.email ?? "",
+      })
+    }
+  }, [auth.profile, auth.user])
+
+  useEffect(() => {
+    if (!auth.isSessionLoading && !auth.session) {
+      navigate("/auth/sign-in")
+    }
+  }, [auth.isSessionLoading, auth.session, navigate])
 
   const handleDraftChange = (key: keyof ProfileDraft, value: string) => {
     setDraft((prev) => ({ ...prev, [key]: value }))
@@ -61,13 +80,13 @@ export default function AuthProfilePage() {
 
   return (
     <section className="grid gap-6">
-      <Card className="border-muted/60 bg-white/80 backdrop-blur">
+      <Card className="w-lg mx-auto border-muted/60 bg-white/80 backdrop-blur">
         <CardHeader>
           <div className="flex justify-between">
             <CardTitle className="text-lg">User profile</CardTitle>
             <Button
               onClick={handleSignOut}
-              disabled={isLoading}
+              disabled={auth.isProfileLoading}
               variant={"destructive"}
             >
               Sign out
@@ -99,7 +118,7 @@ export default function AuthProfilePage() {
                   id="profile-name"
                   value={draft.displayName}
                   onChange={(event) => handleDraftChange("displayName", event.target.value)}
-                  disabled={isLoading}
+                  disabled={auth.isProfileLoading}
                 />
               </div>
               <div className="grid gap-2">
@@ -108,7 +127,7 @@ export default function AuthProfilePage() {
                   id="profile-handle"
                   value={draft.username}
                   onChange={(event) => handleDraftChange("username", event.target.value)}
-                  disabled={isLoading}
+                  disabled={auth.isProfileLoading}
                 />
               </div>
               <div className="grid gap-2">
@@ -118,19 +137,19 @@ export default function AuthProfilePage() {
                   value={draft.email}
                   onChange={(event) => handleDraftChange("email", event.target.value)}
                   rows={3}
-                  disabled={isLoading}
+                  disabled={auth.isProfileLoading}
                 />
               </div>
               <div className="flex flex-wrap items-center gap-3">
-                <Button type="submit" disabled={isLoading}>
-                  {isLoading && <Spinner />}
+                <Button type="submit" disabled={auth.isProfileLoading}>
+                  {auth.isProfileLoading && <Spinner />}
                   Save profile
                 </Button>
                 <Button
                   type="button"
                   variant="outline"
                   onClick={resetDraft}
-                  disabled={isLoading}
+                  disabled={auth.isProfileLoading}
                 >
                   Clear
                 </Button>

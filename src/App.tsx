@@ -1,4 +1,4 @@
-﻿import { FlaskConical, Lock, Radio, Sparkles, Table2 } from "lucide-react"
+﻿import { FlaskConical, Folder, Lock, Radio, Table2 } from "lucide-react"
 import { NavLink, Navigate, Route, Routes } from "react-router-dom"
 
 import BookStore from "@/screens/BookStore"
@@ -6,55 +6,35 @@ import AuthProfilePage from "@/screens/auth/AuthProfilePage"
 import AuthSignInPage from "@/screens/auth/AuthSignInPage"
 import AuthSignUpPage from "@/screens/auth/AuthSignUpPage"
 import EdgeFnDemo from "@/screens/EdgeFnDemo"
-import RealtimeDemo from "@/screens/RealtimeDemo"
+import RealtimeDemo from "@/screens/03_realtime/RealtimeDemo"
 import StorageDemo from "@/screens/storage/StorageDemo"
 import { cn } from "./lib/utils"
 
 const navItems = [
   {
     path: "/book-store",
-    label: "Auto-generated APIs",
+    label: "Auto APIs",
     icon: Table2,
-    title: "Auto-generated APIs Explorer",
-    description:
-      "Focused screens for each Supabase feature. This section highlights the REST endpoints that Supabase generates for every table.",
-    focus: "Auto-generated APIs",
   },
   {
     path: "/auth/sign-in",
-    label: "Auth + Profiles",
+    label: "Authentication",
     icon: Lock,
-    title: "Auth + Profiles for Chat Apps",
-    description:
-      "Create users, sign in, and manage a chat profile. This screen sets up the identity layer that the Realtime chat demo will consume next.",
-    focus: "Auth + Profiles",
   },
   {
     path: "/realtime",
-    label: "Realtime Chat",
+    label: "Realtime",
     icon: Radio,
-    title: "Realtime Chat Feed",
-    description:
-      "Subscribe to live message inserts and watch new chat activity roll in across tabs.",
-    focus: "Realtime Chat",
   },
   {
     path: "/storage",
     label: "Storage",
-    icon: Sparkles,
-    title: "Storage for Avatars",
-    description:
-      "Upload and serve chat avatars. Keep profile images and chat media in storage buckets.",
-    focus: "Storage",
+    icon: Folder,
   },
   {
     path: "/edge",
     label: "Edge Functions",
     icon: FlaskConical,
-    title: "Edge Functions for Chat Ops",
-    description:
-      "Run server-side logic for moderation, signed URLs, and other sensitive chat workflows.",
-    focus: "Edge Functions",
   },
 ]
 
@@ -78,7 +58,7 @@ function App() {
                       <div className={cn("p-3 border rounded-full border-gray-700", isActive ? "bg-black text-white" : "")}>
                         <Icon size={25} />
                       </div>
-                      <h2 className="font-bold">{isActive ? item.label : ""}</h2>
+                      <h2 className="font-bold text-center">{isActive ? item.label : ""}</h2>
                     </div>
                   )}
                 </NavLink>
