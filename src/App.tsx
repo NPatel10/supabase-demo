@@ -2,7 +2,7 @@ import { FlaskConical, Lock, Radio, Sparkles, Table2 } from "lucide-react"
 import { NavLink, Navigate, Route, Routes, useLocation } from "react-router-dom"
 
 import { Badge } from "@/components/ui/badge"
-import ApiExplorer from "@/screens/ApiExplorer"
+import ApiExplorer from "@/screens/BookStore"
 import AuthDemo from "@/screens/AuthDemo"
 import EdgeFnDemo from "@/screens/EdgeFnDemo"
 import RealtimeDemo from "@/screens/RealtimeDemo"
