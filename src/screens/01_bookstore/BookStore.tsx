@@ -140,10 +140,10 @@ export default function BookStore() {
   return (
     <section className="grid gap-6">
       <div className="grid gap-4 md:grid-cols-[0.65fr_1.35fr]">
-        <Card className="border-muted/60 bg-white/80 backdrop-blur">
+        <Card className="border-border/70 bg-card/85 backdrop-blur">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-xl">
-              <Pen className="size-5 text-emerald-600" />
+              <Pen className="size-5 text-primary" />
               Create/Update Form
             </CardTitle>
           </CardHeader>
@@ -224,10 +224,10 @@ export default function BookStore() {
           </CardContent>
         </Card>
 
-        <Card className="border-muted/60 bg-white/80 backdrop-blur">
+        <Card className="border-border/70 bg-card/85 backdrop-blur">
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
-              <BookOpen className="size-5 text-emerald-600" />
+              <BookOpen className="size-5 text-primary" />
               Book Store
             </CardTitle>
           </CardHeader>

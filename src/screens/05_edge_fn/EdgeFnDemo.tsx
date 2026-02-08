@@ -249,7 +249,7 @@ export default function EdgeFnDemo() {
       )}
 
       <div className="grid gap-4 lg:grid-cols-[1fr_1fr]">
-        <Card className="border-muted/60 bg-white/80 backdrop-blur">
+        <Card className="border-border/70 bg-card/85 backdrop-blur">
           <CardHeader>
             <CardTitle className="text-xl">hello-world</CardTitle>
             <CardDescription>
@@ -293,7 +293,7 @@ export default function EdgeFnDemo() {
             </form>
 
             {helloResponse ? (
-              <pre className="overflow-x-auto rounded-lg border border-muted/60 bg-white/70 p-3 text-xs text-neutral-700">
+              <pre className="overflow-x-auto rounded-lg border border-border/70 bg-muted/35 p-3 text-xs text-foreground">
                 {formatJson(helloResponse)}
               </pre>
             ) : (
@@ -309,7 +309,7 @@ export default function EdgeFnDemo() {
           </CardContent>
         </Card>
 
-        <Card className="border-muted/60 bg-white/80 backdrop-blur">
+        <Card className="border-border/70 bg-card/85 backdrop-blur">
           <CardHeader>
             <CardTitle className="text-xl">signed-url</CardTitle>
             <CardDescription>
@@ -384,14 +384,14 @@ export default function EdgeFnDemo() {
             {signedResponse && (
               <div className="grid gap-2">
                 <a
-                  className="text-sm font-medium text-emerald-700 underline-offset-4 hover:underline"
+                  className="text-primary text-sm font-medium underline-offset-4 hover:underline"
                   href={signedResponse.signedUrl}
                   target="_blank"
                   rel="noreferrer"
                 >
                   Open signed URL
                 </a>
-                <pre className="overflow-x-auto rounded-lg border border-muted/60 bg-white/70 p-3 text-xs text-neutral-700">
+                <pre className="overflow-x-auto rounded-lg border border-border/70 bg-muted/35 p-3 text-xs text-foreground">
                   {formatJson(signedResponse)}
                 </pre>
               </div>
@@ -400,7 +400,7 @@ export default function EdgeFnDemo() {
         </Card>
       </div>
 
-      <Card className="border-muted/60 bg-white/70 backdrop-blur">
+      <Card className="border-border/70 bg-card/80 backdrop-blur">
         <CardHeader>
           <CardTitle className="text-lg">Why it matters</CardTitle>
           <CardDescription>

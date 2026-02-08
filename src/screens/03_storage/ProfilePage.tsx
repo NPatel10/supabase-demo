@@ -202,7 +202,7 @@ export default function StorageProfilePage() {
 
   return (
     <section className="grid gap-6">
-      <Card className="w-lg mx-auto border-muted/60 bg-white/80 backdrop-blur">
+      <Card className="w-lg mx-auto border-border/70 bg-card/85 backdrop-blur">
         <CardHeader>
           <div className="flex justify-between">
             <CardTitle className="text-lg">User profile</CardTitle>
@@ -263,7 +263,7 @@ export default function StorageProfilePage() {
                     className="hidden"
                   />
                 </div>
-                <span className="text-red-500">Choose PNG, JPG, or WebP image up to 5MB.</span>
+                <span className="text-primary">Choose PNG, JPG, or WebP image up to 5MB.</span>
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="profile-name">Display name</Label>

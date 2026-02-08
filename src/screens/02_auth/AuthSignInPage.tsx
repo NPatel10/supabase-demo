@@ -63,10 +63,10 @@ export default function AuthSignInPage() {
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
-      <Card className="w-lg mx-auto border-muted/60 bg-white/75 backdrop-blur">
+      <Card className="w-lg mx-auto border-border/70 bg-card/85 backdrop-blur">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-lg">
-            <LogIn className="size-5 text-sky-600" />
+            <LogIn className="size-5 text-primary" />
             Sign in
           </CardTitle>
         </CardHeader>

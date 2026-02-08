@@ -67,10 +67,10 @@ export default function AuthSignUpPage() {
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
-      <Card className="mx-auto w-lg border-muted/60 bg-white/80 backdrop-blur">
+      <Card className="mx-auto w-lg border-border/70 bg-card/85 backdrop-blur">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-xl">
-            <UserPlus className="size-5 text-emerald-600" />
+            <UserPlus className="size-5 text-primary" />
             Create an account
           </CardTitle>
         </CardHeader>

@@ -378,7 +378,7 @@ export default function RealtimeDemo() {
       )}
 
       <div className="grid gap-4 lg:grid-cols-[minmax(260px,320px)_minmax(0,1fr)]">
-        <Card className="border-muted/60 bg-white/80 backdrop-blur">
+        <Card className="border-border/70 bg-card/85 backdrop-blur">
           <CardHeader>
             <CardTitle className="text-xl">Chats</CardTitle>
             <CardDescription>
@@ -411,7 +411,7 @@ export default function RealtimeDemo() {
                 </EmptyContent>
               </Empty>
             ) : (
-              <ScrollArea className="h-128 rounded-xl border border-muted/60 bg-white/60 p-2">
+              <ScrollArea className="h-128 rounded-xl border border-border/70 bg-muted/30 p-2">
                 <div className="grid gap-1">
                   {recipients.map((profile) => {
                     const isSelfProfile = profile.id === userId
@@ -436,7 +436,7 @@ export default function RealtimeDemo() {
                         className={cn(
                           "flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left transition",
                           isActive
-                            ? "bg-emerald-100/80 text-emerald-950"
+                            ? "bg-primary/20 text-foreground ring-1 ring-primary/40"
                             : "hover:bg-muted/60"
                         )}
                       >
@@ -458,7 +458,7 @@ export default function RealtimeDemo() {
                           </div>
                         </div>
                         {isActive && (
-                          <span className="text-[10px] font-medium uppercase tracking-wide text-emerald-700">
+                          <span className="text-primary text-[10px] font-medium uppercase tracking-wide">
                             {isSelfProfile ? "Self" : "Active"}
                           </span>
                         )}
@@ -471,7 +471,7 @@ export default function RealtimeDemo() {
           </CardContent>
         </Card>
 
-        <Card className="border-muted/60 bg-white/80 backdrop-blur">
+        <Card className="border-border/70 bg-card/85 backdrop-blur">
           <CardHeader>
             {!user || !activeRecipientUserId ? (
               <>
@@ -546,7 +546,7 @@ export default function RealtimeDemo() {
                 </EmptyContent>
               </Empty>
             ) : (
-              <ScrollArea className="h-112 rounded-xl border border-muted/60 bg-white/60 p-4">
+              <ScrollArea className="h-112 rounded-xl border border-border/70 bg-muted/30 p-4">
                 <div className="grid gap-4">
                   {chatMessages.map((message) => {
                     const isOutgoing = message.sender_user_id === userId
@@ -566,7 +566,7 @@ export default function RealtimeDemo() {
                               isOutgoing ? "justify-end" : "justify-start"
                             }`}
                           >
-                            <span className="font-medium text-neutral-900">
+                            <span className="font-medium text-foreground">
                               {senderLabel}
                             </span>
                             <span>{formatTime(message.created_at)}</span>
@@ -574,8 +574,8 @@ export default function RealtimeDemo() {
                           <div
                             className={
                               isOutgoing
-                                ? "rounded-2xl rounded-br-sm bg-emerald-100 px-3 py-2 text-sm text-emerald-900"
-                                : "rounded-2xl rounded-bl-sm bg-muted/70 px-3 py-2 text-sm text-neutral-800"
+                                ? "rounded-2xl rounded-br-sm bg-primary px-3 py-2 text-sm text-primary-foreground"
+                                : "rounded-2xl rounded-bl-sm bg-muted/70 px-3 py-2 text-sm text-foreground"
                             }
                           >
                             {message.body}
@@ -588,7 +588,7 @@ export default function RealtimeDemo() {
               </ScrollArea>
             )}
 
-            <form className="grid gap-3 border-t border-muted/60 pt-4" onSubmit={handleSubmit}>
+            <form className="grid gap-3 border-t border-border/70 pt-4" onSubmit={handleSubmit}>
               <Textarea
                 id="chat-message"
                 value={draft}

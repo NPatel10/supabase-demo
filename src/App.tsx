@@ -59,18 +59,18 @@ function App() {
   const connectorInset = `${100 / (navItems.length * 2)}%`
 
   return (
-    <div className="relative min-h-dvh overflow-hidden bg-[#f7f4ee] text-foreground">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(1200px_circle_at_top,#bbf7d0_0%,transparent_50%),radial-gradient(900px_circle_at_80%_20%,#fef3c7_0%,transparent_40%),radial-gradient(700px_circle_at_10%_90%,#c7d2fe_0%,transparent_45%)] opacity-80" />
+    <div className="relative min-h-dvh overflow-hidden bg-background text-foreground">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(1200px_circle_at_top,#ef44442e_0%,transparent_55%),radial-gradient(900px_circle_at_80%_20%,#b91c1c26_0%,transparent_45%),radial-gradient(700px_circle_at_10%_90%,#f9731630_0%,transparent_50%)] opacity-90" />
       <div className="relative mx-auto flex min-h-dvh max-w-6xl flex-col gap-10 px-6 py-8 md:px-10">
         <header className="flex flex-col gap-6">
           <nav className="overflow-x-auto pb-2">
             <div className="relative mx-auto min-w-140 px-2 sm:px-6">
               <div
-                className="pointer-events-none absolute top-6 h-1 rounded-full bg-black/20"
+                className="pointer-events-none absolute top-6 h-1 rounded-full bg-border/70"
                 style={{ left: connectorInset, right: connectorInset }}
               />
               <div
-                className="pointer-events-none absolute top-6 h-1 rounded-full bg-black transition-[width] duration-300 ease-out"
+                className="pointer-events-none absolute top-6 h-1 rounded-full bg-primary transition-[width] duration-300 ease-out"
                 style={{
                   left: connectorInset,
                   width: `calc((100% - (${connectorInset} * 2)) * ${progressPercent / 100})`,
@@ -93,8 +93,8 @@ function App() {
                         className={cn(
                           "z-10 flex h-12 w-12 items-center justify-center rounded-full border transition-colors duration-300",
                           isCompleted
-                            ? "border-black bg-black text-white"
-                            : "border-black/40 bg-[#f7f4ee] text-black/60 group-hover:border-black/60",
+                            ? "border-primary bg-primary text-primary-foreground"
+                            : "border-border bg-card/80 text-muted-foreground group-hover:border-primary/60 group-hover:text-foreground",
                         )}
                       >
                         <Icon size={22} />
@@ -102,7 +102,7 @@ function App() {
                       <h2
                         className={cn(
                           "text-center text-xs font-bold leading-tight transition-colors sm:text-sm",
-                          isCurrent ? "text-black" : "text-black/60",
+                          isCurrent ? "text-foreground" : "text-muted-foreground",
                         )}
                       >
                         {item.label}
@@ -128,7 +128,7 @@ function App() {
           </Routes>
         </main>
 
-        <footer className="border-t border-white/60 pt-4 text-xs text-neutral-500">
+        <footer className="border-t border-border/70 pt-4 text-xs text-muted-foreground">
           copyright 2026
         </footer>
       </div>

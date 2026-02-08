@@ -6,6 +6,9 @@ import "./index.css"
 import App from "./App.tsx"
 
 const queryClient = new QueryClient()
+const rootDocument = document.documentElement
+rootDocument.classList.add("dark")
+rootDocument.style.colorScheme = "dark"
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
