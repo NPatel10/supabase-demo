@@ -36,16 +36,4 @@ export const emptyDraft: DraftBook = {
   publishedYear: "",
 }
 
-export function toDisplayDate(value: string) {
-  const parsed = new Date(value)
-  if (Number.isNaN(parsed.getTime())) {
-    return "Unknown"
-  }
-  return new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  }).format(parsed)
-}
-
 export type BookUpdate = Partial<BookInsert>

@@ -10,8 +10,9 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Spinner } from "@/components/ui/spinner"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { createBook, deleteBook, listBooks, updateBook } from "@/lib/bookStoreApi"
-import { emptyDraft, toDisplayDate, type Book, type DraftBook, type SavePayload } from "@/types/book"
+import { createBook, deleteBook, listBooks, updateBook } from "@/screens/01_bookstore/bookStoreApi"
+import { emptyDraft, type Book, type DraftBook, type SavePayload } from "@/types/book"
+import { formatDate } from "@/screens/utils"
 
 export default function BookStore() {
   const [draft, setDraft] = useState<DraftBook>(emptyDraft)
@@ -264,7 +265,7 @@ export default function BookStore() {
                       <TableCell>{book.author}</TableCell>
                       <TableCell>{book.genre ?? "-"}</TableCell>
                       <TableCell>{book.published_year ?? "-"}</TableCell>
-                      <TableCell>{toDisplayDate(book.created_at)}</TableCell>
+                      <TableCell>{formatDate(book.created_at)}</TableCell>
                       <TableCell>
                         <div className="flex items-center justify-end gap-2">
                           <Button

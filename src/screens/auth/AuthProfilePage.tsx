@@ -5,11 +5,12 @@ import { Label } from "@/components/ui/label"
 import { Spinner } from "@/components/ui/spinner"
 import { Textarea } from "@/components/ui/textarea"
 import { useAuth } from "@/screens/auth/useAuth"
-import { formatDate, type ProfileDraft } from "./utils"
 import { useEffect, useState, type SubmitEventHandler } from "react"
 import { Empty, EmptyContent, EmptyHeader, EmptyTitle } from "@/components/ui/empty"
 import { Button } from "@/components/ui/button"
 import { useNavigate } from "react-router-dom"
+import type { ProfileDraft } from "@/types/profile"
+import { formatDate } from "../utils"
 
 const emptyProfile: ProfileDraft = {
   email: "",
