@@ -26,36 +26,11 @@ import { Textarea } from "@/components/ui/textarea"
 import { supabase } from "@/lib/supabaseClient"
 import { cn } from "@/lib/utils"
 import type { Message, MessageInsert } from "@/types/message"
-import { getInitials } from "@/screens/utils"
+import { formatTime, formatUsername, getInitials } from "@/screens/utils"
 import type { Profile } from "@/types/profile"
 import { getAvatarPublicUrl } from "../03_storage/storageApi"
 
 const MESSAGE_LIMIT = 50
-
-function formatMessageTime(value: string) {
-  const parsed = new Date(value)
-  if (Number.isNaN(parsed.getTime())) {
-    return "unknown"
-  }
-  return new Intl.DateTimeFormat("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(parsed)
-}
-
-function formatProfileLabel(profile: Profile | undefined, fallbackUserId: string) {
-  const displayName = profile?.display_name?.trim() ?? ""
-  if (displayName) {
-    return displayName
-  }
-
-  const username = profile?.username?.trim() ?? ""
-  if (username) {
-    return username
-  }
-
-  return `User ${fallbackUserId.slice(0, 6)}`
-}
 
 function formatProfileHandle(profile: Profile | undefined) {
   const username = profile?.username?.trim() ?? ""
@@ -282,7 +257,7 @@ export default function RealtimeDemo() {
   const selectedRecipientLabel = activeRecipientUserId
     ? isSelfConversation
       ? "You"
-      : formatProfileLabel(selectedRecipient, activeRecipientUserId)
+      : formatUsername(selectedRecipient, activeRecipientUserId)
     : ""
   const selectedRecipientHandle = isSelfConversation
     ? "Message yourself"
@@ -443,7 +418,7 @@ export default function RealtimeDemo() {
                     const isActive = profile.id === activeRecipientUserId
                     const profileLabel = isSelfProfile
                       ? "You"
-                      : formatProfileLabel(profile, profile.id)
+                      : formatUsername(profile, profile.id)
                     const profileHandle = isSelfProfile
                       ? "Message yourself"
                       : formatProfileHandle(profile)
@@ -578,7 +553,7 @@ export default function RealtimeDemo() {
                     const sender = profilesById.get(message.sender_user_id)
                     const senderLabel = isOutgoing
                       ? "You"
-                      : formatProfileLabel(sender, message.sender_user_id)
+                      : formatUsername(sender, message.sender_user_id)
 
                     return (
                       <div
@@ -594,7 +569,7 @@ export default function RealtimeDemo() {
                             <span className="font-medium text-neutral-900">
                               {senderLabel}
                             </span>
-                            <span>{formatMessageTime(message.created_at)}</span>
+                            <span>{formatTime(message.created_at)}</span>
                           </div>
                           <div
                             className={

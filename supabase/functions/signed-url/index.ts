@@ -1,12 +1,8 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts"
 import { createClient } from "npm:@supabase/supabase-js@2"
 
-type SignedAction = "download" | "upload"
-
 type SignedUrlBody = {
-  action?: SignedAction
   bucket?: string
-  contentType?: string
   expiresIn?: number
   path?: string
 }
@@ -44,14 +40,6 @@ serve(async (req) => {
     body = (await req.json()) as SignedUrlBody
   } catch {
     return json({ error: "Invalid JSON body." }, 400)
-  }
-
-  const action =
-    body.action === "upload" || body.action === "download"
-      ? body.action
-      : null
-  if (!action) {
-    return json({ error: 'action must be "download" or "upload".' }, 400)
   }
 
   const bucket = typeof body.bucket === "string" ? body.bucket.trim() : ""
@@ -92,61 +80,34 @@ serve(async (req) => {
     )
   }
 
-  if (action === "download") {
-    const expiresIn = Number(body.expiresIn ?? 120)
-    if (
-      !Number.isInteger(expiresIn) ||
-      expiresIn < 1 ||
-      expiresIn > maxDownloadExpirySeconds
-    ) {
-      return json(
-        {
-          error: `expiresIn must be an integer between 1 and ${maxDownloadExpirySeconds}.`,
-        },
-        400
-      )
-    }
-
-    const { data, error } = await supabase.storage
-      .from(bucket)
-      .createSignedUrl(path, expiresIn)
-
-    if (error || !data) {
-      return json({ error: error?.message ?? "Failed to create signed URL." }, 400)
-    }
-
-    return json({
-      action,
-      bucket,
-      expiresIn,
-      ok: true,
-      path,
-      signedUrl: data.signedUrl,
-    })
+  const expiresIn = Number(body.expiresIn ?? 120)
+  if (
+    !Number.isInteger(expiresIn) ||
+    expiresIn < 1 ||
+    expiresIn > maxDownloadExpirySeconds
+  ) {
+    return json(
+      {
+        error: `expiresIn must be an integer between 1 and ${maxDownloadExpirySeconds}.`,
+      },
+      400
+    )
   }
-
-  const contentType =
-    typeof body.contentType === "string" && body.contentType.trim()
-      ? body.contentType.trim()
-      : "application/octet-stream"
 
   const { data, error } = await supabase.storage
     .from(bucket)
-    .createSignedUploadUrl(path)
+    .createSignedUrl(path, expiresIn)
 
   if (error || !data) {
     return json({ error: error?.message ?? "Failed to create signed URL." }, 400)
   }
 
   return json({
-    action,
     bucket,
-    headers: { "content-type": contentType },
-    method: "PUT",
+    expiresIn,
     ok: true,
     path,
     signedUrl: data.signedUrl,
-    token: data.token,
   })
 })
 

@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from "react"
+import { useEffect, useState, type SubmitEventHandler } from "react"
 import type { Session } from "@supabase/supabase-js"
 import { useMutation } from "@tanstack/react-query"
 import { FlaskConical, ShieldCheck, Sparkles, Zap } from "lucide-react"
@@ -26,18 +26,14 @@ import { Textarea } from "@/components/ui/textarea"
 import { supabase } from "@/lib/supabaseClient"
 
 type JsonPayload = Record<string, unknown>
-type SignedAction = "download" | "upload"
 
 type SignedUrlRequest = {
-  action: SignedAction
   bucket: string
   path: string
   expiresIn?: number
-  contentType?: string
 }
 
 type SignedUrlResponse = {
-  action: SignedAction
   bucket: string
   headers?: Record<string, string>
   method?: string
@@ -62,12 +58,8 @@ export default function EdgeFnDemo() {
   const [helloMessage, setHelloMessage] = useState("Hello from the EdgeFn demo")
   const [helloResponse, setHelloResponse] = useState<JsonPayload | null>(null)
 
-  const [signedAction, setSignedAction] = useState<SignedAction>("download")
   const [signedBucket, setSignedBucket] = useState("avatars")
   const [signedPath, setSignedPath] = useState("")
-  const [signedContentType, setSignedContentType] = useState(
-    "application/octet-stream"
-  )
   const [downloadExpirySeconds, setDownloadExpirySeconds] = useState(
     DEFAULT_DOWNLOAD_EXPIRY_SECONDS.toString()
   )
@@ -156,7 +148,7 @@ export default function EdgeFnDemo() {
     },
   })
 
-  const handleHelloSubmit = async (event: FormEvent<HTMLFormElement>) => {
+  const handleHelloSubmit:SubmitEventHandler = async (event) => {
     event.preventDefault()
 
     try {
@@ -169,7 +161,7 @@ export default function EdgeFnDemo() {
     }
   }
 
-  const handleSignedSubmit = async (event: FormEvent<HTMLFormElement>) => {
+  const handleSignedSubmit: SubmitEventHandler = async (event) => {
     event.preventDefault()
     setSignedFormError(null)
 
@@ -197,23 +189,16 @@ export default function EdgeFnDemo() {
     }
 
     const payload: SignedUrlRequest = {
-      action: signedAction,
       bucket: cleanedBucket,
       path: cleanedPath,
     }
 
-    if (signedAction === "download") {
-      const parsed = Number(downloadExpirySeconds.trim())
-      if (!Number.isInteger(parsed) || parsed < 1 || parsed > 3600) {
-        setSignedFormError("Download expiry must be an integer from 1 to 3600.")
-        return
-      }
-      payload.expiresIn = parsed
+    const parsed = Number(downloadExpirySeconds.trim())
+    if (!Number.isInteger(parsed) || parsed < 1 || parsed > 3600) {
+      setSignedFormError("Download expiry must be an integer from 1 to 3600.")
+      return
     }
-
-    if (signedAction === "upload" && signedContentType.trim()) {
-      payload.contentType = signedContentType.trim()
-    }
+    payload.expiresIn = parsed
 
     try {
       await signedUrlMutation.mutateAsync(payload)
@@ -249,7 +234,7 @@ export default function EdgeFnDemo() {
         </Badge>
         <Badge variant="outline" className="gap-2">
           <Zap className="size-3" />
-          hello-world + signed-url
+          hello-world + signed-url (download)
         </Badge>
       </div>
 
@@ -328,8 +313,7 @@ export default function EdgeFnDemo() {
           <CardHeader>
             <CardTitle className="text-xl">signed-url</CardTitle>
             <CardDescription>
-              Generate signed upload/download URLs for user-scoped storage
-              paths.
+              Generate signed download URLs for user-scoped storage paths.
             </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4">
@@ -346,31 +330,12 @@ export default function EdgeFnDemo() {
                   <EmptyTitle>Sign in to use signed-url</EmptyTitle>
                 </EmptyHeader>
                 <EmptyContent>
-                  Signed URL generation validates your user identity and requires
-                  an authenticated session.
+                  Signed URL generation validates your user identity and
+                  requires an authenticated session.
                 </EmptyContent>
               </Empty>
             ) : (
               <form className="grid gap-3" onSubmit={handleSignedSubmit}>
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    type="button"
-                    variant={signedAction === "download" ? "default" : "outline"}
-                    onClick={() => setSignedAction("download")}
-                    disabled={!isConfigured || signedLoading}
-                  >
-                    Download URL
-                  </Button>
-                  <Button
-                    type="button"
-                    variant={signedAction === "upload" ? "default" : "outline"}
-                    onClick={() => setSignedAction("upload")}
-                    disabled={!isConfigured || signedLoading}
-                  >
-                    Upload URL
-                  </Button>
-                </div>
-
                 <div className="grid gap-2">
                   <Label htmlFor="signed-bucket">Bucket</Label>
                   <Input
@@ -394,34 +359,20 @@ export default function EdgeFnDemo() {
                   </div>
                 </div>
 
-                {signedAction === "download" ? (
-                  <div className="grid gap-2">
-                    <Label htmlFor="signed-expiry">Expires in (seconds)</Label>
-                    <Input
-                      id="signed-expiry"
-                      type="number"
-                      value={downloadExpirySeconds}
-                      onChange={(event) =>
-                        setDownloadExpirySeconds(event.target.value)
-                      }
-                      min={1}
-                      max={3600}
-                      disabled={!isConfigured || signedLoading}
-                    />
-                  </div>
-                ) : (
-                  <div className="grid gap-2">
-                    <Label htmlFor="upload-content-type">Content type</Label>
-                    <Input
-                      id="upload-content-type"
-                      value={signedContentType}
-                      onChange={(event) =>
-                        setSignedContentType(event.target.value)
-                      }
-                      disabled={!isConfigured || signedLoading}
-                    />
-                  </div>
-                )}
+                <div className="grid gap-2">
+                  <Label htmlFor="signed-expiry">Expires in (seconds)</Label>
+                  <Input
+                    id="signed-expiry"
+                    type="number"
+                    value={downloadExpirySeconds}
+                    onChange={(event) =>
+                      setDownloadExpirySeconds(event.target.value)
+                    }
+                    min={1}
+                    max={3600}
+                    disabled={!isConfigured || signedLoading}
+                  />
+                </div>
 
                 <Button type="submit" disabled={!isConfigured || signedLoading}>
                   {signedLoading && <Spinner />}
@@ -432,21 +383,14 @@ export default function EdgeFnDemo() {
 
             {signedResponse && (
               <div className="grid gap-2">
-                {signedResponse.action === "download" ? (
-                  <a
-                    className="text-sm font-medium text-emerald-700 underline-offset-4 hover:underline"
-                    href={signedResponse.signedUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    Open signed URL
-                  </a>
-                ) : (
-                  <div className="text-xs text-muted-foreground">
-                    Use the returned <code>method</code>, <code>headers</code>,
-                    and <code>signedUrl</code> for your upload request.
-                  </div>
-                )}
+                <a
+                  className="text-sm font-medium text-emerald-700 underline-offset-4 hover:underline"
+                  href={signedResponse.signedUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Open signed URL
+                </a>
                 <pre className="overflow-x-auto rounded-lg border border-muted/60 bg-white/70 p-3 text-xs text-neutral-700">
                   {formatJson(signedResponse)}
                 </pre>
@@ -468,7 +412,9 @@ export default function EdgeFnDemo() {
             <ShieldCheck className="size-3" />
             Enforce user-scoped object paths before issuing URLs.
           </div>
-          <div>Create short-lived URLs instead of exposing bucket access.</div>
+          <div>
+            Create short-lived download URLs instead of exposing bucket access.
+          </div>
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <Sparkles className="size-3" />
             Pair with Storage + Realtime for secure chat media workflows.

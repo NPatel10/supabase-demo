@@ -67,17 +67,16 @@ export function useAuth() {
       const { data, error } = await supabase.auth.signUp({
         email: payload.email,
         password: payload.password,
-        options: {
-          data: {
-            display_name: payload.displayName.trim() || undefined,
-            username: payload.username.trim() || undefined,
-          },
-        },
       })
 
-      if (error) {
-        throw new Error(error.message)
-      }
+      if (error) throw new Error(error.message)
+
+      const { error: profileError } = await supabase.from("profiles").insert({
+        id: data.user?.id,
+        display_name: payload.displayName.trim() || undefined,
+        username: payload.username.trim() || undefined,
+      })
+      if (profileError) throw new Error(profileError.message)
 
       return data
     },

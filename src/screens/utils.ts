@@ -1,3 +1,5 @@
+import type { Profile } from "@/types/profile"
+
 export function getInitials(value: string) {
   if (!value.trim()) {
 	return "?"
@@ -38,4 +40,21 @@ export function formatDateTime(value: string | null) {
     hour: "numeric",
     minute: "2-digit",
   }).format(parsed)
+}
+
+export function formatTime(value: string) {
+  const parsed = new Date(value)
+  if (Number.isNaN(parsed.getTime())) {
+    return "unknown"
+  }
+  return new Intl.DateTimeFormat("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(parsed)
+}
+
+export function formatUsername(profile: Profile | undefined, fallbackUserId: string) {
+  return profile?.display_name?.trim()
+    ?? profile?.username?.trim()
+    ?? `User ${fallbackUserId.slice(0, 6)}`
 }

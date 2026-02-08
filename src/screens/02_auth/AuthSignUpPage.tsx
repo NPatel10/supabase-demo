@@ -71,7 +71,7 @@ export default function AuthSignUpPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-xl">
             <UserPlus className="size-5 text-emerald-600" />
-            Create a chat account
+            Create an account
           </CardTitle>
         </CardHeader>
         <CardContent>
