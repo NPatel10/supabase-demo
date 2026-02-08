@@ -7,8 +7,8 @@ import AuthSignInPage from "@/screens/auth/AuthSignInPage"
 import AuthSignUpPage from "@/screens/auth/AuthSignUpPage"
 import EdgeFnDemo from "@/screens/EdgeFnDemo"
 import RealtimeDemo from "@/screens/03_realtime/RealtimeDemo"
-import StorageDemo from "@/screens/storage/StorageDemo"
 import { cn } from "./lib/utils"
+import StorageProfilePage from "./screens/storage/ProfilePage"
 
 const navItems = [
   {
@@ -22,14 +22,14 @@ const navItems = [
     icon: Lock,
   },
   {
-    path: "/realtime",
-    label: "Realtime",
-    icon: Radio,
-  },
-  {
     path: "/storage",
     label: "Storage",
     icon: Folder,
+  },
+  {
+    path: "/realtime",
+    label: "Realtime",
+    icon: Radio,
   },
   {
     path: "/edge",
@@ -74,7 +74,7 @@ function App() {
             <Route path="/auth/sign-in" element={<AuthSignInPage />} />
             <Route path="/auth/profile" element={<AuthProfilePage />} />
             <Route path="/realtime" element={<RealtimeDemo />} />
-            <Route path="/storage" element={<StorageDemo />} />
+            <Route path="/storage" element={<StorageProfilePage />} />
             <Route path="/edge" element={<EdgeFnDemo />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
