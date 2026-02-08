@@ -2,8 +2,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 
 import { supabase } from "@/lib/supabaseClient"
-import type { ProfileDraft, SignInDraft, SignUpDraft } from "./utils"
-import type { UserAttributes } from "@supabase/supabase-js"
+import type { SignInDraft, SignUpDraft } from "@/types/auth"
+import type { ProfileDraft } from "@/types/profile"
 
 export function useAuth() {
   const queryClient = useQueryClient()
@@ -108,7 +108,7 @@ export function useAuth() {
   })
 
   const saveProfileMutation = useMutation({
-    mutationFn: async (payload: ProfileDraft & { userId: string }) => {
+    mutationFn: async (payload: ProfileDraft) => {
       if (payload.email && payload.email != user?.email) {
         const { error } = await supabase.auth.updateUser({ email: payload.email.trim() })
 
@@ -117,18 +117,22 @@ export function useAuth() {
         }
       }
 
-      const data = {
-        display_name: payload.displayName.trim(),
-        username: payload.username.trim(),
-      } as UserAttributes
+      const data: Record<string, string | null> = {
+        display_name: payload.display_name?.trim() ?? null,
+        username: payload.username?.trim() ?? null,
+      }
 
-      const { error } = await supabase.from("profiles").update(data).eq("id", payload.userId)
+      if (Object.prototype.hasOwnProperty.call(payload, "avatar_url")) {
+        data.avatar_url = payload.avatar_url ?? null
+      }
+
+      const { error } = await supabase.from("profiles").upsert(data, { onConflict: "id" })
 
       if (error) throw new Error(error.message)
     },
-    onSuccess: async (_data, variables) => {
+    onSuccess: async () => {
       await queryClient.invalidateQueries({
-        queryKey: ["profile", variables.userId],
+        queryKey: ["profile", user?.id],
       })
     },
   })

@@ -2,10 +2,10 @@ import { useEffect, useMemo, useState } from "react"
 import type { FormEvent } from "react"
 import type { Session } from "@supabase/supabase-js"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { MessageCircle, Radio, Send, ShieldCheck, Sparkles } from "lucide-react"
+import { Send } from "lucide-react"
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { Badge } from "@/components/ui/badge"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -20,14 +20,15 @@ import {
   EmptyHeader,
   EmptyTitle,
 } from "@/components/ui/empty"
-import { Label } from "@/components/ui/label"
-import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Spinner } from "@/components/ui/spinner"
 import { Textarea } from "@/components/ui/textarea"
 import { supabase } from "@/lib/supabaseClient"
+import { cn } from "@/lib/utils"
 import type { Message, MessageInsert } from "@/types/message"
-import type { Profile } from "./utils"
+import { getInitials } from "@/screens/utils"
+import type { Profile } from "@/types/profile"
+import { getAvatarPublicUrl } from "../storage/storageApi"
 
 const MESSAGE_LIMIT = 50
 
@@ -39,18 +40,6 @@ function formatMessageTime(value: string) {
   return new Intl.DateTimeFormat("en-US", {
     hour: "numeric",
     minute: "2-digit",
-  }).format(parsed)
-}
-
-function formatMessageDate(value: string) {
-  const parsed = new Date(value)
-  if (Number.isNaN(parsed.getTime())) {
-    return "unknown"
-  }
-  return new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
   }).format(parsed)
 }
 
@@ -66,6 +55,11 @@ function formatProfileLabel(profile: Profile | undefined, fallbackUserId: string
   }
 
   return `User ${fallbackUserId.slice(0, 6)}`
+}
+
+function formatProfileHandle(profile: Profile | undefined) {
+  const username = profile?.username?.trim() ?? ""
+  return username ? `@${username}` : "No username"
 }
 
 function isMessageInConversation(
@@ -126,14 +120,22 @@ async function listRecipients(currentUserId: string): Promise<Profile[]> {
   const { data, error } = await supabase
     .from("profiles")
     .select("id, display_name, username, avatar_url, created_at")
-    .neq("id", currentUserId)
     .order("created_at", { ascending: true })
 
   if (error) {
     throw error
   }
 
-  return (data ?? []) as Profile[]
+  const profiles = (data ?? []) as Profile[]
+  return profiles.sort((a, b) => {
+    if (a.id === currentUserId) {
+      return -1
+    }
+    if (b.id === currentUserId) {
+      return 1
+    }
+    return 0
+  })
 }
 
 async function createMessage(payload: MessageInsert): Promise<Message> {
@@ -156,7 +158,6 @@ export default function RealtimeDemo() {
   const [draft, setDraft] = useState("")
   const [recipientUserId, setRecipientUserId] = useState("")
   const [formError, setFormError] = useState<string | null>(null)
-  const [channelState, setChannelState] = useState("IDLE")
 
   const queryClient = useQueryClient()
 
@@ -276,10 +277,20 @@ export default function RealtimeDemo() {
   const selectedRecipient =
     recipients.find((profile) => profile.id === activeRecipientUserId) ??
     profilesById.get(activeRecipientUserId)
+  const isSelfConversation = Boolean(userId) && activeRecipientUserId === userId
 
   const selectedRecipientLabel = activeRecipientUserId
-    ? formatProfileLabel(selectedRecipient, activeRecipientUserId)
+    ? isSelfConversation
+      ? "You"
+      : formatProfileLabel(selectedRecipient, activeRecipientUserId)
     : ""
+  const selectedRecipientHandle = isSelfConversation
+    ? "Message yourself"
+    : formatProfileHandle(selectedRecipient)
+  const selectedRecipientAvatarUrl = getAvatarPublicUrl(selectedRecipient?.avatar_url ?? "")
+  const selectedRecipientInitials = getInitials(
+    selectedRecipientLabel || selectedRecipientHandle
+  )
 
   useEffect(() => {
     if (!isConfigured || !session || !userId || !activeRecipientUserId) {
@@ -306,9 +317,6 @@ export default function RealtimeDemo() {
           })
         }
       )
-      .subscribe((status) => {
-        setChannelState(status)
-      })
 
     return () => {
       supabase.removeChannel(channel)
@@ -363,9 +371,7 @@ export default function RealtimeDemo() {
       })
       setDraft("")
     } catch (err) {
-      if (!(err instanceof Error)) {
-        setFormError("Failed to send message.")
-      }
+      setFormError(err instanceof Error ? err.message : "Failed to send message.")
     }
   }
 
@@ -383,40 +389,12 @@ export default function RealtimeDemo() {
       : null)
 
   const isSending = sendMutation.isPending
-  const isLoadingConversation = messagesQuery.isLoading
+  const isLoadingConversation = messagesQuery.isLoading || messagesQuery.isFetching
   const isLoadingRecipients = recipientsQuery.isLoading
-  const isLive = channelState === "SUBSCRIBED"
   const user = session?.user ?? null
 
   return (
     <section className="grid gap-6">
-      <div className="flex flex-wrap items-center gap-3">
-        <Badge variant="outline" className="gap-2">
-          <Radio className="size-3" />
-          Realtime Chat
-        </Badge>
-        <Badge variant={isConfigured ? "secondary" : "destructive"}>
-          {isConfigured ? "Connected" : "Missing env"}
-        </Badge>
-        <Badge variant={isLive ? "secondary" : "outline"}>
-          {isLive ? "Realtime live" : "Realtime idle"}
-        </Badge>
-        <Badge variant="outline" className="gap-2">
-          <MessageCircle className="size-3" />
-          messages table
-        </Badge>
-      </div>
-
-      {!isConfigured && (
-        <Alert>
-          <AlertTitle>Set your project keys</AlertTitle>
-          <AlertDescription>
-            Fill in <code>.env.local</code> with your Supabase URL and
-            publishable key, then restart the dev server.
-          </AlertDescription>
-        </Alert>
-      )}
-
       {errorMessage && (
         <Alert variant="destructive">
           <AlertTitle>Realtime error</AlertTitle>
@@ -424,25 +402,23 @@ export default function RealtimeDemo() {
         </Alert>
       )}
 
-      <div className="grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
+      <div className="grid gap-4 lg:grid-cols-[minmax(260px,320px)_minmax(0,1fr)]">
         <Card className="border-muted/60 bg-white/80 backdrop-blur">
           <CardHeader>
-            <CardTitle className="text-xl">Live chat feed</CardTitle>
+            <CardTitle className="text-xl">Chats</CardTitle>
             <CardDescription>
-              This screen subscribes to <code>messages</code> with
-              <code>postgres_changes</code> and renders both incoming and
-              outgoing messages for the selected conversation.
+              Select a user to open conversation history in realtime.
             </CardDescription>
           </CardHeader>
-          <CardContent className="grid gap-4">
+          <CardContent className="grid gap-3">
             {!user ? (
               <Empty className="border-dashed">
                 <EmptyHeader>
-                  <EmptyTitle>Sign in to view messages</EmptyTitle>
+                  <EmptyTitle>Sign in to view users</EmptyTitle>
                 </EmptyHeader>
                 <EmptyContent>
-                  Use the Auth screen to create a user, then come back to chat
-                  in realtime.
+                  Use the Auth screen to sign in, then choose a user to start
+                  chatting.
                 </EmptyContent>
               </Empty>
             ) : isLoadingRecipients ? (
@@ -456,8 +432,127 @@ export default function RealtimeDemo() {
                   <EmptyTitle>No recipients available</EmptyTitle>
                 </EmptyHeader>
                 <EmptyContent>
+                  Create another account to make it appear in the chat list.
+                </EmptyContent>
+              </Empty>
+            ) : (
+              <ScrollArea className="h-128 rounded-xl border border-muted/60 bg-white/60 p-2">
+                <div className="grid gap-1">
+                  {recipients.map((profile) => {
+                    const isSelfProfile = profile.id === userId
+                    const isActive = profile.id === activeRecipientUserId
+                    const profileLabel = isSelfProfile
+                      ? "You"
+                      : formatProfileLabel(profile, profile.id)
+                    const profileHandle = isSelfProfile
+                      ? "Message yourself"
+                      : formatProfileHandle(profile)
+                    const avatarUrl = getAvatarPublicUrl(profile.avatar_url)
+                    const profileInitials = getInitials(profileLabel)
+
+                    return (
+                      <button
+                        key={profile.id}
+                        type="button"
+                        onClick={() => {
+                          setRecipientUserId(profile.id)
+                          setFormError(null)
+                        }}
+                        className={cn(
+                          "flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left transition",
+                          isActive
+                            ? "bg-emerald-100/80 text-emerald-950"
+                            : "hover:bg-muted/60"
+                        )}
+                      >
+                        <Avatar size="sm">
+                          {avatarUrl ? (
+                            <AvatarImage
+                              src={avatarUrl}
+                              alt={`${profileLabel} avatar`}
+                            />
+                          ) : null}
+                          <AvatarFallback>{profileInitials}</AvatarFallback>
+                        </Avatar>
+                        <div className="min-w-0 flex-1">
+                          <div className="truncate text-sm font-medium">
+                            {profileLabel}
+                          </div>
+                          <div className="truncate text-xs text-muted-foreground">
+                            {profileHandle}
+                          </div>
+                        </div>
+                        {isActive && (
+                          <span className="text-[10px] font-medium uppercase tracking-wide text-emerald-700">
+                            {isSelfProfile ? "Self" : "Active"}
+                          </span>
+                        )}
+                      </button>
+                    )
+                  })}
+                </div>
+              </ScrollArea>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="border-muted/60 bg-white/80 backdrop-blur">
+          <CardHeader>
+            {!user || !activeRecipientUserId ? (
+              <>
+                <CardTitle className="text-xl">Live chat feed</CardTitle>
+                <CardDescription>
+                  This screen subscribes to <code>messages</code> with
+                  <code> postgres_changes</code> and updates selected
+                  conversations instantly.
+                </CardDescription>
+              </>
+            ) : (
+              <div className="flex items-center gap-3">
+                <Avatar>
+                  {selectedRecipientAvatarUrl ? (
+                    <AvatarImage
+                      src={selectedRecipientAvatarUrl}
+                      alt={`${selectedRecipientLabel} avatar`}
+                    />
+                  ) : null}
+                  <AvatarFallback>{selectedRecipientInitials}</AvatarFallback>
+                </Avatar>
+                <div className="grid gap-0.5">
+                  <CardTitle className="text-xl">{selectedRecipientLabel}</CardTitle>
+                  <CardDescription>{selectedRecipientHandle}</CardDescription>
+                </div>
+              </div>
+            )}
+          </CardHeader>
+          <CardContent className="grid gap-4">
+            {!user ? (
+              <Empty className="border-dashed">
+                <EmptyHeader>
+                  <EmptyTitle>Sign in to view messages</EmptyTitle>
+                </EmptyHeader>
+                <EmptyContent>
+                  Use the Auth screen to create a user, then come back to chat
+                  in realtime.
+                </EmptyContent>
+              </Empty>
+            ) : recipients.length === 0 ? (
+              <Empty className="border-dashed">
+                <EmptyHeader>
+                  <EmptyTitle>No recipients available</EmptyTitle>
+                </EmptyHeader>
+                <EmptyContent>
                   Create and sign in with another user in a second tab to start
                   a conversation.
+                </EmptyContent>
+              </Empty>
+            ) : !activeRecipientUserId ? (
+              <Empty className="border-dashed">
+                <EmptyHeader>
+                  <EmptyTitle>Select a user</EmptyTitle>
+                </EmptyHeader>
+                <EmptyContent>
+                  Choose a user from the left panel to load chat history.
                 </EmptyContent>
               </Empty>
             ) : isLoadingConversation ? (
@@ -476,19 +571,14 @@ export default function RealtimeDemo() {
                 </EmptyContent>
               </Empty>
             ) : (
-              <ScrollArea className="h-80 rounded-xl border border-muted/60 bg-white/60 p-4">
+              <ScrollArea className="h-112 rounded-xl border border-muted/60 bg-white/60 p-4">
                 <div className="grid gap-4">
                   {chatMessages.map((message) => {
                     const isOutgoing = message.sender_user_id === userId
                     const sender = profilesById.get(message.sender_user_id)
-                    const receiver = profilesById.get(message.receiver_user_id)
                     const senderLabel = isOutgoing
                       ? "You"
                       : formatProfileLabel(sender, message.sender_user_id)
-                    const receiverLabel =
-                      message.receiver_user_id === userId
-                        ? "you"
-                        : formatProfileLabel(receiver, message.receiver_user_id)
 
                     return (
                       <div
@@ -504,7 +594,6 @@ export default function RealtimeDemo() {
                             <span className="font-medium text-neutral-900">
                               {senderLabel}
                             </span>
-                            <span>to {receiverLabel}</span>
                             <span>{formatMessageTime(message.created_at)}</span>
                           </div>
                           <div
@@ -524,56 +613,25 @@ export default function RealtimeDemo() {
               </ScrollArea>
             )}
 
-            <form className="grid gap-3" onSubmit={handleSubmit}>
-              <div className="grid gap-2">
-                <Label htmlFor="chat-recipient">Chat with</Label>
-                <NativeSelect
-                  id="chat-recipient"
-                  value={activeRecipientUserId}
-                  onChange={(event) => setRecipientUserId(event.target.value)}
-                  disabled={
-                    !user || recipients.length === 0 || isSending || !isConfigured
-                  }
-                  className="w-full"
-                >
-                  {recipients.length === 0 ? (
-                    <NativeSelectOption value="">
-                      No recipients available
-                    </NativeSelectOption>
-                  ) : (
-                    recipients.map((profile) => {
-                      const label = formatProfileLabel(profile, profile.id)
-                      const handle = profile.username
-                        ? ` (@${profile.username})`
-                        : ""
-
-                      return (
-                        <NativeSelectOption key={profile.id} value={profile.id}>
-                          {`${label}${handle}`}
-                        </NativeSelectOption>
-                      )
-                    })
-                  )}
-                </NativeSelect>
-              </div>
-
-              <div className="grid gap-2">
-                <Label htmlFor="chat-message">Send a message</Label>
-                <Textarea
-                  id="chat-message"
-                  value={draft}
-                  onChange={(event) => setDraft(event.target.value)}
-                  placeholder="Type your message"
-                  rows={3}
-                  disabled={
-                    !user ||
-                    isSending ||
-                    !isConfigured ||
-                    recipients.length === 0 ||
-                    !activeRecipientUserId
-                  }
-                />
-              </div>
+            <form className="grid gap-3 border-t border-muted/60 pt-4" onSubmit={handleSubmit}>
+              <Textarea
+                id="chat-message"
+                value={draft}
+                onChange={(event) => setDraft(event.target.value)}
+                placeholder={
+                  activeRecipientUserId
+                    ? `Message ${selectedRecipientLabel || "user"}`
+                    : "Select a user from the left panel"
+                }
+                rows={3}
+                disabled={
+                  !user ||
+                  isSending ||
+                  !isConfigured ||
+                  recipients.length === 0 ||
+                  !activeRecipientUserId
+                }
+              />
               <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
                 <Button
                   type="submit"
@@ -601,66 +659,6 @@ export default function RealtimeDemo() {
             </form>
           </CardContent>
         </Card>
-
-        <div className="grid gap-4">
-          <Card className="border-muted/60 bg-white/70 backdrop-blur">
-            <CardHeader>
-              <CardTitle className="text-lg">Chat identity</CardTitle>
-              <CardDescription>
-                Auth + Profiles provide display names for each participant.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="grid gap-3 text-sm text-muted-foreground">
-              <div>
-                <span className="font-medium text-neutral-900">profiles</span>{" "}
-                supplies <code>display_name</code> and <code>username</code>.
-              </div>
-              <div>
-                <span className="font-medium text-neutral-900">messages</span>{" "}
-                stores <code>sender_user_id</code> and
-                <code>receiver_user_id</code> for direction.
-              </div>
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <ShieldCheck className="size-3" />
-                RLS should enforce sender ownership on inserts.
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="border-muted/60 bg-white/75 backdrop-blur">
-            <CardHeader>
-              <CardTitle className="text-lg">Realtime status</CardTitle>
-              <CardDescription>
-                Keep this tab open while sending messages in another window.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="grid gap-3 text-sm text-muted-foreground">
-              <div>
-                Channel state:{" "}
-                <span className="font-medium text-neutral-900">
-                  {channelState.toLowerCase()}
-                </span>
-              </div>
-              <div>
-                Latest message date:{" "}
-                <span className="font-medium text-neutral-900">
-                  {!user
-                    ? "sign in to load"
-                    : !activeRecipientUserId
-                      ? "select recipient"
-                      : messages[0]
-                        ? formatMessageDate(messages[0].created_at)
-                        : "none"}
-                </span>
-              </div>
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <Sparkles className="size-3" />
-                Open a second tab with another user to verify two-way realtime
-                chat.
-              </div>
-            </CardContent>
-          </Card>
-        </div>
       </div>
     </section>
   )

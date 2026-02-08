@@ -14,7 +14,7 @@ import { formatDate } from "../utils"
 
 const emptyProfile: ProfileDraft = {
   email: "",
-  displayName: "",
+  display_name: "",
   username: "",
 }
 
@@ -29,7 +29,7 @@ export default function AuthProfilePage() {
     if (auth.profile && auth.user) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setDraft({
-        displayName: auth.profile?.display_name ?? "",
+        display_name: auth.profile?.display_name ?? "",
         username: auth.profile?.username ?? "",
         email: auth.user?.email ?? "",
       })
@@ -56,8 +56,7 @@ export default function AuthProfilePage() {
     setError(null)
 
     auth.saveProfileMutation.mutate({
-      userId: auth.user.id,
-      displayName: draft.displayName,
+      display_name: draft.display_name,
       username: draft.username,
       email: draft.email,
     })
@@ -65,7 +64,7 @@ export default function AuthProfilePage() {
 
   const resetDraft = () => {
     setDraft({
-      displayName: auth.profile?.display_name ?? "",
+      display_name: auth.profile?.display_name ?? "",
       username: auth.profile?.username ?? "",
       email: auth.user?.email ?? "",
     })
@@ -115,8 +114,8 @@ export default function AuthProfilePage() {
                 <Label htmlFor="profile-name">Display name</Label>
                 <Input
                   id="profile-name"
-                  value={draft.displayName}
-                  onChange={(event) => handleDraftChange("displayName", event.target.value)}
+                  value={draft.display_name}
+                  onChange={(event) => handleDraftChange("display_name", event.target.value)}
                   disabled={auth.isProfileLoading}
                 />
               </div>

@@ -6,7 +6,6 @@ import { Label } from "@/components/ui/label"
 import { Spinner } from "@/components/ui/spinner"
 import { Textarea } from "@/components/ui/textarea"
 import { useAuth } from "@/screens/auth/useAuth"
-import { formatDate, type ProfileDraft } from "../auth/utils"
 import {
   useEffect,
   useMemo,
@@ -18,15 +17,15 @@ import {
 import { Empty, EmptyContent, EmptyHeader, EmptyTitle } from "@/components/ui/empty"
 import { Button } from "@/components/ui/button"
 import { useNavigate } from "react-router-dom"
-import { getAvatarPublicUrl } from "./storageApi"
-import { getInitials } from "./type"
+import { deleteAvatar, getAvatarPublicUrl, uploadAvatar } from "./storageApi"
 import { Pencil } from "lucide-react"
+import { formatDate, getInitials } from "@/screens/utils"
+import type { ProfileDraft } from "@/types/profile"
 
-type StorageProfileDraft = ProfileDraft & { avatar_url: string }
-
-const emptyProfile: StorageProfileDraft = {
+const MAX_IMAGE_SIZE = 5 * 1024 * 1024 // 5MB
+const emptyProfile: ProfileDraft = {
   email: "",
-  displayName: "",
+  display_name: "",
   username: "",
   avatar_url: "",
 }
@@ -34,9 +33,10 @@ const emptyProfile: StorageProfileDraft = {
 export default function StorageProfilePage() {
   const auth = useAuth()
 
-  const [draft, setDraft] = useState<StorageProfileDraft>(emptyProfile)
+  const [draft, setDraft] = useState<ProfileDraft>(emptyProfile)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
 
   const [error, setError] = useState<string | null>(null)
@@ -44,9 +44,8 @@ export default function StorageProfilePage() {
 
   useEffect(() => {
     if (auth.profile && auth.user) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setDraft({
-        displayName: auth.profile?.display_name ?? "",
+        display_name: auth.profile?.display_name ?? "",
         username: auth.profile?.username ?? "",
         email: auth.user?.email ?? "",
         avatar_url: auth.profile?.avatar_url ?? "",
@@ -75,9 +74,12 @@ export default function StorageProfilePage() {
   }, [draft.avatar_url, previewUrl])
 
   const initials = useMemo(() => {
-    const base = draft.displayName || draft.email || ""
+    const base = draft.display_name || draft.email || ""
     return getInitials(base)
-  }, [draft.displayName, draft.email])
+  }, [draft.display_name, draft.email])
+
+  const isSavingProfile = auth.saveProfileMutation.isPending || isUploadingAvatar
+  const isBusy = auth.isProfileLoading || isSavingProfile
 
   const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
     setError(null)
@@ -91,12 +93,16 @@ export default function StorageProfilePage() {
 
     if (!file.type.startsWith("image/")) {
       setError("Please select an image file.")
+      setSelectedFile(null)
+      setPreviewUrl(null)
       event.target.value = ""
       return
     }
 
-    if (file.size > 5 * 1024 * 1024) {
-      setError("Image must be smaller than 5MB.")
+    if (file.size > MAX_IMAGE_SIZE) {
+      setError(`Image must be smaller than ${Math.floor(MAX_IMAGE_SIZE/1024/1024)}MB.`)
+      setSelectedFile(null)
+      setPreviewUrl(null)
       event.target.value = ""
       return
     }
@@ -108,7 +114,7 @@ export default function StorageProfilePage() {
     setSelectedFile(file)
   }
 
-  const handleProfileSave: SubmitEventHandler<HTMLFormElement> = (event) => {
+  const handleProfileSave: SubmitEventHandler<HTMLFormElement> = async (event) => {
     event.preventDefault()
     if (!auth.user) {
       setError("Sign in to save a profile.")
@@ -117,19 +123,67 @@ export default function StorageProfilePage() {
 
     setError(null)
 
-    auth.saveProfileMutation.mutate({
-      userId: auth.user.id,
-      displayName: draft.displayName,
-      username: draft.username,
-      email: draft.email,
-    })
+    const previousAvatarPath = auth.profile?.avatar_url ?? draft.avatar_url ?? ""
+    let uploadedAvatarPath: string | null = null
+
+    try {
+      let avatarPath = draft.avatar_url ?? ""
+      if (selectedFile) {
+        setIsUploadingAvatar(true)
+        avatarPath = await uploadAvatar(auth.user.id, selectedFile)
+        uploadedAvatarPath = avatarPath
+        setDraft((prev) => ({
+          ...prev,
+          avatar_url: avatarPath,
+        }))
+      }
+
+      await auth.saveProfileMutation.mutateAsync({
+        display_name: draft.display_name,
+        username: draft.username,
+        email: draft.email,
+        avatar_url: avatarPath,
+      })
+
+      if (
+        uploadedAvatarPath &&
+        previousAvatarPath &&
+        previousAvatarPath !== uploadedAvatarPath
+      ) {
+        try {
+          await deleteAvatar(previousAvatarPath)
+        } catch {
+          setError("Profile saved, but previous avatar could not be deleted.")
+        }
+      }
+
+      setSelectedFile(null)
+      setPreviewUrl(null)
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ""
+      }
+    } catch (err) {
+      if (uploadedAvatarPath) {
+        try {
+          await deleteAvatar(uploadedAvatarPath)
+        } catch {
+          // Ignore cleanup failure and return the original save error below.
+        }
+      }
+      setError(err instanceof Error ? err.message : "Failed to save profile.")
+    } finally {
+      setIsUploadingAvatar(false)
+    }
   }
 
   const resetDraft = () => {
     setSelectedFile(null)
     setPreviewUrl(null)
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ""
+    }
     setDraft({
-      displayName: auth.profile?.display_name ?? "",
+      display_name: auth.profile?.display_name ?? "",
       username: auth.profile?.username ?? "",
       email: auth.user?.email ?? "",
       avatar_url: auth.profile?.avatar_url ?? "",
@@ -154,7 +208,7 @@ export default function StorageProfilePage() {
             <CardTitle className="text-lg">User profile</CardTitle>
             <Button
               onClick={handleSignOut}
-              disabled={auth.isProfileLoading}
+              disabled={isBusy}
               variant={"destructive"}
             >
               Sign out
@@ -194,7 +248,7 @@ export default function StorageProfilePage() {
                     variant="default"
                     className="absolute -right-1 -bottom-1 rounded-full"
                     onClick={openFilePicker}
-                    disabled={auth.isProfileLoading}
+                    disabled={isBusy}
                     aria-label="Select profile image"
                   >
                     <Pencil className="size-3.5" />
@@ -205,7 +259,7 @@ export default function StorageProfilePage() {
                     type="file"
                     accept="image/*"
                     onChange={handleFileChange}
-                    disabled={auth.isProfileLoading}
+                    disabled={isBusy}
                     className="hidden"
                   />
                 </div>
@@ -215,9 +269,9 @@ export default function StorageProfilePage() {
                 <Label htmlFor="profile-name">Display name</Label>
                 <Input
                   id="profile-name"
-                  value={draft.displayName}
-                  onChange={(event) => handleDraftChange("displayName", event.target.value)}
-                  disabled={auth.isProfileLoading}
+                  value={draft.display_name}
+                  onChange={(event) => handleDraftChange("display_name", event.target.value)}
+                  disabled={isBusy}
                 />
               </div>
               <div className="grid gap-2">
@@ -226,7 +280,7 @@ export default function StorageProfilePage() {
                   id="profile-handle"
                   value={draft.username}
                   onChange={(event) => handleDraftChange("username", event.target.value)}
-                  disabled={auth.isProfileLoading}
+                  disabled={isBusy}
                 />
               </div>
               <div className="grid gap-2">
@@ -236,19 +290,19 @@ export default function StorageProfilePage() {
                   value={draft.email}
                   onChange={(event) => handleDraftChange("email", event.target.value)}
                   rows={3}
-                  disabled={auth.isProfileLoading}
+                  disabled={isBusy}
                 />
               </div>
               <div className="flex flex-wrap items-center gap-3">
-                <Button type="submit" disabled={auth.isProfileLoading}>
-                  {auth.isProfileLoading && <Spinner />}
+                <Button type="submit" disabled={isBusy}>
+                  {isSavingProfile && <Spinner />}
                   Save profile
                 </Button>
                 <Button
                   type="button"
                   variant="outline"
                   onClick={resetDraft}
-                  disabled={auth.isProfileLoading}
+                  disabled={isBusy}
                 >
                   Clear
                 </Button>

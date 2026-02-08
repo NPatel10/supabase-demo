@@ -6,9 +6,4 @@ export type Profile = {
   created_at: string
 }
 
-export type ProfileDraft = Partial<{
-  displayName: string
-  username: string
-  email: string
-  avatar_url: string
-}>
+export type ProfileDraft = Partial<Profile & { email: string }>
