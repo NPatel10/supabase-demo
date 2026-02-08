@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { useAuth } from "@/screens/auth/useAuth"
+import { useAuth } from "@/screens/02_auth/useAuth"
 import { UserPlus } from "lucide-react"
 import { useEffect, useState, type SubmitEventHandler } from "react"
 import type { SignUpDraft } from "@/types/auth"

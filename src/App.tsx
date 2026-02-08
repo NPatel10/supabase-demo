@@ -2,13 +2,13 @@ import { FlaskConical, Folder, Lock, Radio, Table2 } from "lucide-react"
 import { NavLink, Navigate, Route, Routes, useLocation } from "react-router-dom"
 
 import BookStore from "@/screens/01_bookstore/BookStore"
-import AuthProfilePage from "@/screens/auth/AuthProfilePage"
-import AuthSignInPage from "@/screens/auth/AuthSignInPage"
-import AuthSignUpPage from "@/screens/auth/AuthSignUpPage"
-import RealtimeDemo from "@/screens/03_realtime/RealtimeDemo"
-import EdgeFnDemo from "@/screens/EdgeFnDemo"
+import AuthProfilePage from "@/screens/02_auth/AuthProfilePage"
+import AuthSignInPage from "@/screens/02_auth/AuthSignInPage"
+import AuthSignUpPage from "@/screens/02_auth/AuthSignUpPage"
+import RealtimeDemo from "@/screens/04_realtime/RealtimeDemo"
+import EdgeFnDemo from "@/screens/05_edge_fn/EdgeFnDemo"
 import { cn } from "@/lib/utils"
-import StorageProfilePage from "@/screens/storage/ProfilePage"
+import StorageProfilePage from "@/screens/03_storage/ProfilePage"
 
 const navItems = [
   {

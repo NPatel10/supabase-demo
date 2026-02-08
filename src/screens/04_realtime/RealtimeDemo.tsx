@@ -28,7 +28,7 @@ import { cn } from "@/lib/utils"
 import type { Message, MessageInsert } from "@/types/message"
 import { getInitials } from "@/screens/utils"
 import type { Profile } from "@/types/profile"
-import { getAvatarPublicUrl } from "../storage/storageApi"
+import { getAvatarPublicUrl } from "../03_storage/storageApi"
 
 const MESSAGE_LIMIT = 50
 

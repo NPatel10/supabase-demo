@@ -118,6 +118,7 @@ export function useAuth() {
       }
 
       const data: Record<string, string | null> = {
+        id: user?.id ?? "",
         display_name: payload.display_name?.trim() ?? null,
         username: payload.username?.trim() ?? null,
       }
