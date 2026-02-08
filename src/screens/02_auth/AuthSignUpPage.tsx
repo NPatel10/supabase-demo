@@ -52,7 +52,7 @@ export default function AuthSignUpPage() {
       username: draft.username,
     }, {
       onSuccess: () => {
-        navigate("/auth/profile")
+        navigate("/auth/sign-in?info=ac-created")
       },
       onError: (data) => {
         setError(data.message ?? "Failed to create account")

@@ -85,7 +85,6 @@ export default function AuthProfilePage() {
             <Button
               onClick={handleSignOut}
               disabled={auth.isProfileLoading}
-              variant={"destructive"}
             >
               Sign out
             </Button>

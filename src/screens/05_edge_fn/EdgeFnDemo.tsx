@@ -1,10 +1,8 @@
 import { useEffect, useState, type SubmitEventHandler } from "react"
 import type { Session } from "@supabase/supabase-js"
 import { useMutation } from "@tanstack/react-query"
-import { FlaskConical, ShieldCheck, Sparkles, Zap } from "lucide-react"
-
+import { ShieldCheck, Sparkles } from "lucide-react"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -49,10 +47,6 @@ function formatJson(payload: unknown) {
 }
 
 export default function EdgeFnDemo() {
-  const isConfigured = Boolean(
-    import.meta.env.VITE_SUPABASE_URL &&
-      import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY
-  )
   const [session, setSession] = useState<Session | null>(null)
   const [helloName, setHelloName] = useState("")
   const [helloMessage, setHelloMessage] = useState("Hello from the EdgeFn demo")
@@ -221,33 +215,6 @@ export default function EdgeFnDemo() {
 
   return (
     <section className="grid gap-6">
-      <div className="flex flex-wrap items-center gap-3">
-        <Badge variant="outline" className="gap-2">
-          <FlaskConical className="size-3" />
-          Edge Functions
-        </Badge>
-        <Badge variant={isConfigured ? "secondary" : "destructive"}>
-          {isConfigured ? "Connected" : "Missing env"}
-        </Badge>
-        <Badge variant={user ? "secondary" : "outline"}>
-          {user ? "Authenticated" : "Guest mode"}
-        </Badge>
-        <Badge variant="outline" className="gap-2">
-          <Zap className="size-3" />
-          hello-world + signed-url (download)
-        </Badge>
-      </div>
-
-      {!isConfigured && (
-        <Alert>
-          <AlertTitle>Set your project keys</AlertTitle>
-          <AlertDescription>
-            Fill in <code>.env.local</code> with your Supabase URL and
-            publishable key, then restart the dev server.
-          </AlertDescription>
-        </Alert>
-      )}
-
       <div className="grid gap-4 lg:grid-cols-[1fr_1fr]">
         <Card className="border-border/70 bg-card/85 backdrop-blur">
           <CardHeader>
@@ -272,7 +239,7 @@ export default function EdgeFnDemo() {
                   value={helloName}
                   onChange={(event) => setHelloName(event.target.value)}
                   placeholder="Optional name"
-                  disabled={!isConfigured || helloLoading}
+                  disabled={helloLoading}
                 />
               </div>
               <div className="grid gap-2">
@@ -283,10 +250,10 @@ export default function EdgeFnDemo() {
                   onChange={(event) => setHelloMessage(event.target.value)}
                   rows={3}
                   placeholder="Message to echo"
-                  disabled={!isConfigured || helloLoading}
+                  disabled={helloLoading}
                 />
               </div>
-              <Button type="submit" disabled={!isConfigured || helloLoading}>
+              <Button type="submit" disabled={helloLoading}>
                 {helloLoading && <Spinner />}
                 Invoke hello-world
               </Button>
@@ -342,7 +309,7 @@ export default function EdgeFnDemo() {
                     id="signed-bucket"
                     value={signedBucket}
                     onChange={(event) => setSignedBucket(event.target.value)}
-                    disabled={!isConfigured || signedLoading}
+                    disabled={signedLoading}
                   />
                 </div>
                 <div className="grid gap-2">
@@ -352,7 +319,7 @@ export default function EdgeFnDemo() {
                     value={signedPath}
                     onChange={(event) => setSignedPath(event.target.value)}
                     placeholder={`${user.id}/demo-file.txt`}
-                    disabled={!isConfigured || signedLoading}
+                    disabled={signedLoading}
                   />
                   <div className="text-xs text-muted-foreground">
                     Must start with <code>{user.id}/</code>.
@@ -370,11 +337,11 @@ export default function EdgeFnDemo() {
                     }
                     min={1}
                     max={3600}
-                    disabled={!isConfigured || signedLoading}
+                    disabled={signedLoading}
                   />
                 </div>
 
-                <Button type="submit" disabled={!isConfigured || signedLoading}>
+                <Button type="submit" disabled={signedLoading}>
                   {signedLoading && <Spinner />}
                   Invoke signed-url
                 </Button>

@@ -33,7 +33,7 @@ export async function deleteAvatar(path: string): Promise<void> {
 }
 
 export function getAvatarPublicUrl(path: string): string {
-  if (path === "") {
+  if (!path) {
     return ""
   }
 

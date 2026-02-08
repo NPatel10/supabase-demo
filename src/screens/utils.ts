@@ -58,3 +58,8 @@ export function formatUsername(profile: Profile | undefined, fallbackUserId: str
     ?? profile?.username?.trim()
     ?? `User ${fallbackUserId.slice(0, 6)}`
 }
+
+export function formatProfileHandle(profile: Profile | undefined) {
+  const username = profile?.username?.trim() ?? ""
+  return username ? `@${username}` : "No username"
+}

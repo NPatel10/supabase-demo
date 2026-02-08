@@ -1,9 +1,6 @@
-import { useEffect, useMemo, useState } from "react"
-import type { FormEvent } from "react"
-import type { Session } from "@supabase/supabase-js"
+import { useEffect, useMemo, useState, type SubmitEventHandler } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Send } from "lucide-react"
-
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
@@ -25,168 +22,33 @@ import { Spinner } from "@/components/ui/spinner"
 import { Textarea } from "@/components/ui/textarea"
 import { supabase } from "@/lib/supabaseClient"
 import { cn } from "@/lib/utils"
-import type { Message, MessageInsert } from "@/types/message"
-import { formatTime, formatUsername, getInitials } from "@/screens/utils"
-import type { Profile } from "@/types/profile"
+import type { Message } from "@/types/message"
+import { formatProfileHandle, formatTime, formatUsername, getInitials } from "@/screens/utils"
 import { getAvatarPublicUrl } from "../03_storage/storageApi"
-
-const MESSAGE_LIMIT = 50
-
-function formatProfileHandle(profile: Profile | undefined) {
-  const username = profile?.username?.trim() ?? ""
-  return username ? `@${username}` : "No username"
-}
-
-function isMessageInConversation(
-  message: Message,
-  currentUserId: string,
-  recipientUserId: string
-) {
-  const sentByCurrentUser =
-    message.sender_user_id === currentUserId &&
-    message.receiver_user_id === recipientUserId
-  const receivedByCurrentUser =
-    message.sender_user_id === recipientUserId &&
-    message.receiver_user_id === currentUserId
-
-  return sentByCurrentUser || receivedByCurrentUser
-}
-
-async function listMessages(
-  currentUserId: string,
-  recipientUserId: string
-): Promise<Message[]> {
-  const conversationFilter =
-    `and(sender_user_id.eq.${currentUserId},receiver_user_id.eq.${recipientUserId}),` +
-    `and(sender_user_id.eq.${recipientUserId},receiver_user_id.eq.${currentUserId})`
-
-  const { data, error } = await supabase
-    .from("messages")
-    .select("id, sender_user_id, receiver_user_id, body, created_at")
-    .or(conversationFilter)
-    .order("created_at", { ascending: false })
-    .limit(MESSAGE_LIMIT)
-
-  if (error) {
-    throw error
-  }
-
-  return (data ?? []) as Message[]
-}
-
-async function listProfiles(userIds: string[]): Promise<Profile[]> {
-  if (userIds.length === 0) {
-    return []
-  }
-
-  const { data, error } = await supabase
-    .from("profiles")
-    .select("id, display_name, username, avatar_url, created_at")
-    .in("id", userIds)
-
-  if (error) {
-    throw error
-  }
-
-  return (data ?? []) as Profile[]
-}
-
-async function listRecipients(currentUserId: string): Promise<Profile[]> {
-  const { data, error } = await supabase
-    .from("profiles")
-    .select("id, display_name, username, avatar_url, created_at")
-    .order("created_at", { ascending: true })
-
-  if (error) {
-    throw error
-  }
-
-  const profiles = (data ?? []) as Profile[]
-  return profiles.sort((a, b) => {
-    if (a.id === currentUserId) {
-      return -1
-    }
-    if (b.id === currentUserId) {
-      return 1
-    }
-    return 0
-  })
-}
-
-async function createMessage(payload: MessageInsert): Promise<Message> {
-  const { data, error } = await supabase
-    .from("messages")
-    .insert(payload)
-    .select("id, sender_user_id, receiver_user_id, body, created_at")
-    .single()
-
-  if (error) {
-    throw error
-  }
-
-  return data as Message
-}
+import { useAuth } from "../02_auth/useAuth"
+import { appendMessage, createMessage, isMessageInConversation, listMessages, listRecipients } from "./realtimeApi"
 
 export default function RealtimeDemo() {
-  const isConfigured = true
-  const [session, setSession] = useState<Session | null>(null)
   const [draft, setDraft] = useState("")
   const [recipientUserId, setRecipientUserId] = useState("")
   const [formError, setFormError] = useState<string | null>(null)
 
   const queryClient = useQueryClient()
-
-  useEffect(() => {
-    let isMounted = true
-    supabase.auth
-      .getSession()
-      .then(({ data }) => {
-        if (isMounted) {
-          setSession(data.session)
-        }
-      })
-      .catch(() => {
-        if (isMounted) {
-          setSession(null)
-        }
-      })
-
-    const { data } = supabase.auth.onAuthStateChange((_event, nextSession) => {
-      setSession(nextSession)
-      setFormError(null)
-    })
-
-    return () => {
-      isMounted = false
-      data.subscription.unsubscribe()
-    }
-  }, [])
-
-  const userId = session?.user.id ?? ""
+  const auth = useAuth()
+  const userId = auth.user?.id ?? ""
 
   const recipientsQuery = useQuery({
     queryKey: ["chat-recipients", userId],
-    queryFn: () => {
-      if (!userId) {
-        return Promise.resolve([])
-      }
-      return listRecipients(userId)
-    },
+    queryFn: listRecipients,
     staleTime: 1000 * 30,
-    enabled: isConfigured && Boolean(session),
+    enabled: Boolean(auth.user),
   })
 
   const recipients = useMemo(() => recipientsQuery.data ?? [], [recipientsQuery.data])
-
   const activeRecipientUserId = useMemo(() => {
-    if (recipients.length === 0) {
-      return ""
-    }
+    if (recipients.length === 0) return ""
 
-    const recipientExists = recipients.some(
-      (profile) => profile.id === recipientUserId
-    )
-
+    const recipientExists = recipients.some((profile) => profile.id === recipientUserId)
     return recipientExists ? recipientUserId : recipients[0].id
   }, [recipientUserId, recipients])
 
@@ -194,83 +56,31 @@ export default function RealtimeDemo() {
     () => ["messages", userId, activeRecipientUserId],
     [activeRecipientUserId, userId]
   )
-
   const messagesQuery = useQuery({
     queryKey: messagesQueryKey,
-    queryFn: () => {
-      if (!userId || !activeRecipientUserId) {
-        return Promise.resolve([])
-      }
-
-      return listMessages(userId, activeRecipientUserId)
-    },
+    queryFn: () => listMessages(userId, activeRecipientUserId),
     staleTime: 1000 * 20,
-    enabled:
-      isConfigured &&
-      Boolean(session) &&
-      Boolean(userId) &&
-      Boolean(activeRecipientUserId),
+    enabled: Boolean(auth.user) && Boolean(activeRecipientUserId),
   })
 
   const messages = useMemo(() => messagesQuery.data ?? [], [messagesQuery.data])
+  const chatMessages = useMemo(() => [...messages].reverse(), [messages])
 
-  const chatMessages = useMemo(() => {
-    return [...messages].reverse()
-  }, [messages])
-
-  const messageUserIds = useMemo(() => {
-    const ids = new Set<string>()
-
-    if (userId) {
-      ids.add(userId)
-    }
-
-    if (activeRecipientUserId) {
-      ids.add(activeRecipientUserId)
-    }
-
-    messages.forEach((message) => {
-      ids.add(message.sender_user_id)
-      ids.add(message.receiver_user_id)
-    })
-
-    return Array.from(ids).sort()
-  }, [activeRecipientUserId, messages, userId])
-
-  const profilesQuery = useQuery({
-    queryKey: ["profiles", messageUserIds],
-    queryFn: () => listProfiles(messageUserIds),
-    enabled: isConfigured && Boolean(session) && messageUserIds.length > 0,
-  })
-
-  const profilesById = useMemo(() => {
-    return new Map(
-      (profilesQuery.data ?? []).map((profile) => [profile.id, profile])
-    )
-  }, [profilesQuery.data])
-
-  const selectedRecipient =
-    recipients.find((profile) => profile.id === activeRecipientUserId) ??
-    profilesById.get(activeRecipientUserId)
+  const selectedRecipient = recipients.find((profile) => profile.id === activeRecipientUserId)
   const isSelfConversation = Boolean(userId) && activeRecipientUserId === userId
 
   const selectedRecipientLabel = activeRecipientUserId
-    ? isSelfConversation
-      ? "You"
-      : formatUsername(selectedRecipient, activeRecipientUserId)
+    ? isSelfConversation ? "You" : formatUsername(selectedRecipient, activeRecipientUserId)
     : ""
   const selectedRecipientHandle = isSelfConversation
-    ? "Message yourself"
+    ? "Message yourself. This is your private space."
     : formatProfileHandle(selectedRecipient)
-  const selectedRecipientAvatarUrl = getAvatarPublicUrl(selectedRecipient?.avatar_url ?? "")
-  const selectedRecipientInitials = getInitials(
-    selectedRecipientLabel || selectedRecipientHandle
-  )
+  const selectedRecipientAvatarUrl = selectedRecipient ? getAvatarPublicUrl(selectedRecipient.avatar_url) : undefined
+  const selectedRecipientInitials = selectedRecipient ? getInitials(selectedRecipient.display_name) : ""
+  console.log(selectedRecipientInitials)
 
   useEffect(() => {
-    if (!isConfigured || !session || !userId || !activeRecipientUserId) {
-      return
-    }
+    if (!userId || !activeRecipientUserId) return
 
     const channel = supabase
       .channel(`realtime:messages:${userId}:${activeRecipientUserId}`)
@@ -279,49 +89,28 @@ export default function RealtimeDemo() {
         { event: "INSERT", schema: "public", table: "messages" },
         (payload) => {
           const incoming = payload.new as Message
-          if (!isMessageInConversation(incoming, userId, activeRecipientUserId)) {
-            return
+          if (isMessageInConversation(incoming, userId, activeRecipientUserId)) {
+            queryClient.setQueryData<Message[]>(messagesQueryKey, (current) => appendMessage(current, incoming))
           }
-
-          queryClient.setQueryData<Message[]>(messagesQueryKey, (current) => {
-            const existing = current ?? []
-            if (existing.some((message) => message.id === incoming.id)) {
-              return existing
-            }
-            return [incoming, ...existing].slice(0, MESSAGE_LIMIT)
-          })
         }
       )
 
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [
-    isConfigured,
-    messagesQueryKey,
-    queryClient,
-    activeRecipientUserId,
-    session,
-    userId,
-  ])
+  }, [messagesQueryKey, queryClient, activeRecipientUserId, auth, userId])
 
   const sendMutation = useMutation({
     mutationFn: createMessage,
     onSuccess: (message) => {
-      queryClient.setQueryData<Message[]>(messagesQueryKey, (current) => {
-        const existing = current ?? []
-        if (existing.some((item) => item.id === message.id)) {
-          return existing
-        }
-        return [message, ...existing].slice(0, MESSAGE_LIMIT)
-      })
+      queryClient.setQueryData<Message[]>(messagesQueryKey, (current) => appendMessage(current, message))
     },
   })
 
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit: SubmitEventHandler = async (event) => {
     event.preventDefault()
 
-    if (!session?.user) {
+    if (!auth.session || !auth.user) {
       setFormError("Sign in to send a message.")
       return
     }
@@ -340,7 +129,7 @@ export default function RealtimeDemo() {
     setFormError(null)
     try {
       await sendMutation.mutateAsync({
-        sender_user_id: session.user.id,
+        sender_user_id: auth.user.id,
         receiver_user_id: activeRecipientUserId,
         body: trimmed,
       })
@@ -356,9 +145,6 @@ export default function RealtimeDemo() {
     (messagesQuery.error instanceof Error
       ? messagesQuery.error.message
       : null) ??
-    (profilesQuery.error instanceof Error
-      ? profilesQuery.error.message
-      : null) ??
     (recipientsQuery.error instanceof Error
       ? recipientsQuery.error.message
       : null)
@@ -366,7 +152,6 @@ export default function RealtimeDemo() {
   const isSending = sendMutation.isPending
   const isLoadingConversation = messagesQuery.isLoading || messagesQuery.isFetching
   const isLoadingRecipients = recipientsQuery.isLoading
-  const user = session?.user ?? null
 
   return (
     <section className="grid gap-6">
@@ -386,7 +171,7 @@ export default function RealtimeDemo() {
             </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-3">
-            {!user ? (
+            {!auth.user ? (
               <Empty className="border-dashed">
                 <EmptyHeader>
                   <EmptyTitle>Sign in to view users</EmptyTitle>
@@ -473,7 +258,7 @@ export default function RealtimeDemo() {
 
         <Card className="border-border/70 bg-card/85 backdrop-blur">
           <CardHeader>
-            {!user || !activeRecipientUserId ? (
+            {!auth.user || !activeRecipientUserId ? (
               <>
                 <CardTitle className="text-xl">Live chat feed</CardTitle>
                 <CardDescription>
@@ -485,12 +270,10 @@ export default function RealtimeDemo() {
             ) : (
               <div className="flex items-center gap-3">
                 <Avatar>
-                  {selectedRecipientAvatarUrl ? (
-                    <AvatarImage
-                      src={selectedRecipientAvatarUrl}
-                      alt={`${selectedRecipientLabel} avatar`}
-                    />
-                  ) : null}
+                  <AvatarImage
+                    src={selectedRecipientAvatarUrl}
+                    alt={`${selectedRecipientLabel} avatar`}
+                  />
                   <AvatarFallback>{selectedRecipientInitials}</AvatarFallback>
                 </Avatar>
                 <div className="grid gap-0.5">
@@ -500,8 +283,8 @@ export default function RealtimeDemo() {
               </div>
             )}
           </CardHeader>
-          <CardContent className="grid gap-4">
-            {!user ? (
+          <CardContent className="flex flex-col justify-between gap-4 grow">
+            {!auth.user ? (
               <Empty className="border-dashed">
                 <EmptyHeader>
                   <EmptyTitle>Sign in to view messages</EmptyTitle>
@@ -550,10 +333,7 @@ export default function RealtimeDemo() {
                 <div className="grid gap-4">
                   {chatMessages.map((message) => {
                     const isOutgoing = message.sender_user_id === userId
-                    const sender = profilesById.get(message.sender_user_id)
-                    const senderLabel = isOutgoing
-                      ? "You"
-                      : formatUsername(sender, message.sender_user_id)
+                    const senderLabel = isOutgoing ? "You" : formatUsername(selectedRecipient, message.sender_user_id)
 
                     return (
                       <div
@@ -600,9 +380,8 @@ export default function RealtimeDemo() {
                 }
                 rows={3}
                 disabled={
-                  !user ||
+                  !auth.user ||
                   isSending ||
-                  !isConfigured ||
                   recipients.length === 0 ||
                   !activeRecipientUserId
                 }
@@ -612,9 +391,8 @@ export default function RealtimeDemo() {
                   type="submit"
                   className="gap-2"
                   disabled={
-                    !user ||
+                    !auth.user ||
                     isSending ||
-                    !isConfigured ||
                     !activeRecipientUserId ||
                     recipients.length === 0
                   }
@@ -624,10 +402,10 @@ export default function RealtimeDemo() {
                   Send message
                 </Button>
                 <span>
-                  {user
+                  {auth.user
                     ? activeRecipientUserId
-                      ? `Signed in as ${user.email ?? "unknown"}, chatting with ${selectedRecipientLabel}.`
-                      : `Signed in as ${user.email ?? "unknown"}.`
+                      ? `Signed in as ${auth.user.email ?? "unknown"}, chatting with ${selectedRecipientLabel}.`
+                      : `Signed in as ${auth.user.email ?? "unknown"}.`
                     : "Sign in to send messages."}
                 </span>
               </div>
